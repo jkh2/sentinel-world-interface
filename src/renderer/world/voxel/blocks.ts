@@ -8,6 +8,7 @@ export const GRASS: BlockId = 1;
 export const DIRT: BlockId = 2;
 export const STONE: BlockId = 3;
 export const SAND: BlockId = 4;
+export const WATER: BlockId = 5;
 
 export interface BlockDef {
   id: BlockId;

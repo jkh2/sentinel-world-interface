@@ -42,8 +42,29 @@ export function App(): JSX.Element {
   const [speech, setSpeech] = useState('');
   const [agentCommand, setAgentCommand] = useState<WorldAction | null>(null);
 
+  // Floating chat window — persistent, movable, resizable; never tied to
+  // pointer-lock state (that was the bug: clicking re-locked and hid it).
+  const [chatOpen, setChatOpen] = useState(true);
+  const [chatPos, setChatPos] = useState({ x: Math.max(20, window.innerWidth - 420), y: 56 });
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+
   const streamingId = useRef<string | null>(null);
   const transcriptEnd = useRef<HTMLDivElement | null>(null);
+
+  function onDragStart(e: React.PointerEvent): void {
+    dragRef.current = { dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
+    const move = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      setChatPos({ x: ev.clientX - dragRef.current.dx, y: ev.clientY - dragRef.current.dy });
+    };
+    const up = () => {
+      dragRef.current = null;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
 
   // Detect CLIs + track pointer-lock state.
   useEffect(() => {
@@ -231,73 +252,92 @@ export function App(): JSX.Element {
           : 'Click the valley to enter · dig to gather earth, then build with it'}
       </div>
 
-      {/* chrome shown when stepped out (cursor free) */}
-      {!locked && (
-        <>
-          <header className="topbar">
-            <div className="brand">
-              <span className="glyph">ב</span> SIDLF World Interface
-              <span className="phase">voxel valley · phase 2</span>
-            </div>
-            <div className="controls">
-              <select value={cli} onChange={(e) => setCli(e.target.value as CliKind)} disabled={sessionUp}>
-                <option value="mock">Mock (offline)</option>
-                <option value="claude-code">
-                  claude-code {caps?.['claude-code']?.version ?? '(not found)'}
-                </option>
-                <option value="codex">codex {caps?.codex?.version ?? '(not found)'}</option>
-              </select>
-              <button onClick={onPickDir} disabled={sessionUp || cli === 'mock'}>
-                {projectDir ? '…' + projectDir.slice(-28) : 'Choose project…'}
-              </button>
-              {!sessionUp ? (
-                <button className="primary" onClick={onStart}>Start session</button>
-              ) : (
-                <button className="danger" onClick={() => window.sidlf.stopSession()}>Stop</button>
-              )}
-            </div>
-          </header>
+      {/* toggle — always available */}
+      {!chatOpen && (
+        <button
+          className="chat-toggle"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => setChatOpen(true)}
+        >
+          💬 chat
+        </button>
+      )}
 
-          <aside className="chat">
-            <div className="chat-status">
-              <span className={`dot ${status}`} /> {status} · <span className="muted">{activity}</span>
-            </div>
-            <div className="chat-log">
-              {messages.length === 0 && (
-                <div className="empty">
-                  A quiet valley to build in and think in. Dig, place, walk — and start a
-                  session to talk with me while we work. The conversation runs a real CLI.
-                </div>
-              )}
-              {messages.map((m) => (
-                <div key={m.id} className={`msg src-${slug(m.source)}`}>
-                  <div className="src">{m.source}</div>
-                  <div className="text">{m.text}{m.streaming && <span className="caret">▋</span>}</div>
-                </div>
-              ))}
-              <div ref={transcriptEnd} />
-            </div>
-            <div className="composer">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    onSend();
-                  }
-                }}
-                placeholder={sessionUp ? 'Type to your partner…' : 'Start a session to talk'}
-                disabled={!sessionUp}
-                rows={2}
-              />
-              <div className="cbtns">
-                <button className="primary" onClick={onSend} disabled={!sessionUp}>Send</button>
-                <button onClick={() => window.sidlf.interrupt()} disabled={!sessionUp}>Interrupt</button>
+      {/* Persistent, movable, resizable chat + controls window. stopPropagation
+          on pointer-down means clicking it never re-locks the world. */}
+      {chatOpen && (
+        <div
+          className="chatwin"
+          style={{ left: chatPos.x, top: chatPos.y }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="chatwin-head" onPointerDown={onDragStart}>
+            <span className="glyph">ב</span>
+            <span className="chatwin-title">SIDLF · chat &amp; controls</span>
+            <span className="chatwin-spacer" />
+            <button className="link" onPointerDown={(e) => e.stopPropagation()} onClick={() => setChatOpen(false)}>
+              hide
+            </button>
+          </div>
+
+          <div className="chatwin-controls">
+            <select value={cli} onChange={(e) => setCli(e.target.value as CliKind)} disabled={sessionUp}>
+              <option value="mock">Mock (offline)</option>
+              <option value="claude-code">claude-code {caps?.['claude-code']?.version ?? '(none)'}</option>
+              <option value="codex">codex {caps?.codex?.version ?? '(none)'}</option>
+            </select>
+            <button onClick={onPickDir} disabled={sessionUp || cli === 'mock'}>
+              {projectDir ? '…' + projectDir.slice(-20) : 'Project…'}
+            </button>
+            {!sessionUp ? (
+              <button className="primary" onClick={onStart}>Start</button>
+            ) : (
+              <button className="danger" onClick={() => window.sidlf.stopSession()}>Stop</button>
+            )}
+          </div>
+
+          <div className="chat-status">
+            <span className={`dot ${status}`} /> {status} · <span className="muted">{activity}</span>
+          </div>
+
+          <div className="chat-log">
+            {messages.length === 0 && (
+              <div className="empty">
+                A quiet valley to build in and think in. Dig, place, walk — and start a
+                session to talk with me while we work. Press <b>Esc</b> to free the cursor,
+                then click here to type. Drag this window's title bar to move it; drag its
+                corner to resize.
               </div>
+            )}
+            {messages.map((m) => (
+              <div key={m.id} className={`msg src-${slug(m.source)}`}>
+                <div className="src">{m.source}</div>
+                <div className="text">{m.text}{m.streaming && <span className="caret">▋</span>}</div>
+              </div>
+            ))}
+            <div ref={transcriptEnd} />
+          </div>
+
+          <div className="composer">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  onSend();
+                }
+              }}
+              placeholder={sessionUp ? 'Type to your partner…' : 'Start a session to talk'}
+              disabled={!sessionUp}
+              rows={2}
+            />
+            <div className="cbtns">
+              <button className="primary" onClick={onSend} disabled={!sessionUp}>Send</button>
+              <button onClick={() => window.sidlf.interrupt()} disabled={!sessionUp}>Stop</button>
             </div>
-          </aside>
-        </>
+          </div>
+        </div>
       )}
 
       {permission && (
