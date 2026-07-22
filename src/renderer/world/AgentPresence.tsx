@@ -9,6 +9,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import { navPoint } from './navPoints';
+import { AIR, blockIdFromName } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
 
 interface Props {
@@ -16,12 +17,13 @@ interface Props {
   status: string;
   speech: string;
   command: WorldAction | null;
+  onWorldEdit: () => void;
 }
 
 const WALK_SPEED = 3.6;
 const STOP_DIST = 1.8;
 
-export function AgentPresence({ world, status, speech, command }: Props): JSX.Element {
+export function AgentPresence({ world, status, speech, command, onWorldEdit }: Props): JSX.Element {
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
@@ -67,6 +69,30 @@ export function AgentPresence({ world, status, speech, command }: Props): JSX.El
       case 'wave':
         waveUntil.current = performance.now() + 1600;
         break;
+      case 'dig_front':
+      case 'place_front': {
+        const g = group.current;
+        if (g) {
+          const yaw = g.rotation.y;
+          const fx = Math.floor(g.position.x + Math.sin(yaw));
+          const fz = Math.floor(g.position.z + Math.cos(yaw));
+          const surf = world.surfaceHeight(fx, fz); // y of air just above surface
+          if (command.action === 'dig_front') {
+            const y = surf - 1;
+            if (y >= 0 && world.isSolid(fx, y, fz)) {
+              world.set(fx, y, fz, AIR);
+              onWorldEdit();
+            }
+          } else {
+            const y = surf;
+            if (world.inBounds(fx, y, fz) && world.get(fx, y, fz) === AIR) {
+              world.set(fx, y, fz, blockIdFromName(command.block ?? 'dirt'));
+              onWorldEdit();
+            }
+          }
+        }
+        break;
+      }
       case 'look_at':
       case 'point':
       case 'nod':

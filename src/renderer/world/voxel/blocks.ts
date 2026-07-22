@@ -29,3 +29,13 @@ export const PLACEABLE: BlockId[] = [GRASS, DIRT, STONE, SAND];
 export function blockName(id: BlockId): string {
   return BLOCKS[id]?.name ?? 'Air';
 }
+
+export function blockIdFromName(name: string): BlockId {
+  switch (name) {
+    case 'grass': return GRASS;
+    case 'stone': return STONE;
+    case 'sand': return SAND;
+    case 'dirt':
+    default: return DIRT;
+  }
+}

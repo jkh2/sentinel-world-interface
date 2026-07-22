@@ -201,6 +201,7 @@ export function App(): JSX.Element {
         agentStatus={bubbleStatus}
         agentSpeech={locked ? speech : ''}
         agentCommand={agentCommand}
+        onAgentWorldEdit={() => setVersion((v) => v + 1)}
       />
 
       {/* crosshair — only while in the valley */}

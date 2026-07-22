@@ -48,6 +48,8 @@ export class MockAgentAdapter extends BaseAgentAdapter {
     if (/\bstand\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'stand' } });
     if (/\bstop\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'stop' } });
     if (/\b(wave|hi|hello|hey)\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'wave' } });
+    if (/\bdig\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'dig_front' } });
+    if (/\b(build|place|stack|wall)\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'place_front', block: 'stone' } });
 
     // Simulate a permission request when asked to do something sensitive.
     if (/\b(delete|remove|rm|force|push)\b/i.test(message)) {

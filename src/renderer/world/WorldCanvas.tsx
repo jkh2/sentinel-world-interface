@@ -21,6 +21,7 @@ interface Props {
   agentStatus: string;
   agentSpeech: string;
   agentCommand: WorldAction | null;
+  onAgentWorldEdit: () => void;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -60,6 +61,7 @@ export function WorldCanvas(props: Props): JSX.Element {
         status={props.agentStatus}
         speech={props.agentSpeech}
         command={props.agentCommand}
+        onWorldEdit={props.onAgentWorldEdit}
       />
     </Canvas>
   );

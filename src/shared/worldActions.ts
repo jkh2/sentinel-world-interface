@@ -15,7 +15,9 @@ export type WorldActionName =
   | 'wave'
   | 'nod'
   | 'point'
-  | 'idle';
+  | 'idle'
+  | 'dig_front'
+  | 'place_front';
 
 export type WorldAction =
   | { action: 'walk_to'; target: string }
@@ -27,11 +29,15 @@ export type WorldAction =
   | { action: 'stand' }
   | { action: 'wave' }
   | { action: 'nod' }
-  | { action: 'idle' };
+  | { action: 'idle' }
+  | { action: 'dig_front' }
+  | { action: 'place_front'; block?: string };
 
 const TARGETED = new Set<WorldActionName>(['walk_to', 'look_at', 'point']);
+const VALID_BLOCKS = new Set(['grass', 'dirt', 'stone', 'sand']);
 const ALL_NAMES = new Set<WorldActionName>([
-  'walk_to', 'look_at', 'follow_human', 'stop', 'sit', 'stand', 'wave', 'nod', 'point', 'idle',
+  'walk_to', 'look_at', 'follow_human', 'stop', 'sit', 'stand', 'wave', 'nod',
+  'point', 'idle', 'dig_front', 'place_front',
 ]);
 
 /** Validate an arbitrary object into a WorldAction, or null if invalid. */
@@ -46,6 +52,10 @@ export function parseWorldAction(obj: unknown): WorldAction | null {
     if (typeof target !== 'string') return null;
     if (!NAV_POINTS.some((p) => p.name === target)) return null; // unknown location
     return { action: name, target } as WorldAction;
+  }
+  if (name === 'place_front') {
+    const block = typeof a.block === 'string' && VALID_BLOCKS.has(a.block) ? a.block : 'dirt';
+    return { action: 'place_front', block };
   }
   return { action: name } as WorldAction;
 }
@@ -104,13 +114,17 @@ export function worldProtocolPrompt(): string {
     '```',
     '',
     'Available actions: walk_to<target>, look_at<target>, point<target>,',
-    'follow_human, stop, sit, stand, wave, nod, idle.',
+    'follow_human, stop, sit, stand, wave, nod, idle, dig_front, place_front<block>.',
     `Valid targets (named locations only): ${points}.`,
+    'dig_front removes the ground block just ahead of you; place_front stacks a',
+    'block ahead of you (block: grass | dirt | stone | sand, default dirt). Use',
+    'these to dig and build alongside your partner — e.g. walk over, then dig or',
+    'stack blocks to help build.',
     '',
     'Emit an action when it fits the moment — walk over when your partner calls',
-    'you, sit when you settle in to work, wave in greeting. Movement is optional',
-    'and expressive, never required. World-actions never touch files or commands;',
-    'they only move your avatar. Keep your spoken words natural; the envelope is',
-    'stripped out before your words are shown.',
+    'you, sit when you settle in to work, wave in greeting, dig or build when you',
+    'help. Movement is optional and expressive, never required. World-actions never',
+    'touch files or commands; they only move your avatar and shape the ground. Keep',
+    'your spoken words natural; the envelope is stripped out before your words show.',
   ].join('\n');
 }

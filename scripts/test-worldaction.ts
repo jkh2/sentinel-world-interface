@@ -20,10 +20,10 @@ async function main(): Promise<void> {
   await adapter.startSession({
     cli: 'claude-code',
     cwd: os.tmpdir(),
-    model: 'claude-haiku-4-5-20251001',
+    model: process.env.WA_MODEL || 'claude-sonnet-5',
   });
   await adapter.sendMessage(
-    'Your partner is standing by the pond. Walk over to the pond edge and give a wave hello. Keep your spoken reply to one short sentence.',
+    'Your partner just called you over to help dig by the pond. Walk to the pond edge, then dig the ground in front of you. Keep your spoken reply to one short sentence.',
   );
   await Promise.race([done, new Promise((r) => setTimeout(r, 60_000))]);
   await adapter.stopSession();
