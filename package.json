@@ -5,16 +5,29 @@
   "private": true,
   "author": "James Keith Harwood II & Claude Sentinel",
   "license": "UNLICENSED",
-  "type": "module",
+  "main": "out/main/index.js",
   "scripts": {
-    "spike:pty": "node scripts/pty-spike.js"
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx scripts/test-adapters.ts",
+    "spike:pty": "node scripts/pty-spike.mjs"
   },
   "dependencies": {
     "node-pty": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.3.1",
+    "electron-vite": "^2.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.23.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^5.3.4"
   }
 }
