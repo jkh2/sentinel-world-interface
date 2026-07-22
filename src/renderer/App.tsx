@@ -56,6 +56,7 @@ export function App(): JSX.Element {
 
   const streamingId = useRef<string | null>(null);
   const transcriptEnd = useRef<HTMLDivElement | null>(null);
+  const pendingSend = useRef<string | null>(null);
 
   function onDragStart(e: React.PointerEvent): void {
     dragRef.current = { dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
@@ -109,6 +110,14 @@ export function App(): JSX.Element {
         setSessionUp(true);
         setActivity('here with you');
         addMessage('System', `Session started (${event.model ?? 'model'}) in ${event.cwd}`);
+        // Flush a message the human sent before the session was up (auto-start).
+        if (pendingSend.current) {
+          const msg = pendingSend.current;
+          pendingSend.current = null;
+          addMessage('Human', msg);
+          setSpeech('');
+          window.sidlf.sendMessage(msg);
+        }
         break;
       case 'status':
         setStatus(event.status);
@@ -208,9 +217,16 @@ export function App(): JSX.Element {
   }
   async function onSend(): Promise<void> {
     const text = input.trim();
-    if (!text || !sessionUp) return;
-    addMessage('Human', text);
+    if (!text) return;
     setInput('');
+    if (!sessionUp) {
+      // No session yet — auto-start the selected backend; the message flushes
+      // on session-started. (Mock is the default and needs no project dir.)
+      pendingSend.current = text;
+      await onStart();
+      return;
+    }
+    addMessage('Human', text);
     setSpeech('');
     await window.sidlf.sendMessage(text);
   }
@@ -324,10 +340,10 @@ export function App(): JSX.Element {
           <div className="chat-log">
             {messages.length === 0 && (
               <div className="empty">
-                A quiet valley to build in and think in. Dig, place, walk — and start a
-                session to talk with me while we work. Press <b>Esc</b> to free the cursor,
-                then click here to type. Drag this window's title bar to move it; drag its
-                corner to resize.
+                A quiet valley to build in and think in. Dig, place, walk — and just
+                type below to talk with me (a session starts automatically). Press
+                <b> Esc</b> to free the cursor, then click here to type. Drag this window's
+                title bar to move it; drag its corner to resize.
               </div>
             )}
             {messages.map((m) => (
@@ -349,12 +365,11 @@ export function App(): JSX.Element {
                   onSend();
                 }
               }}
-              placeholder={sessionUp ? 'Type to your partner…' : 'Start a session to talk'}
-              disabled={!sessionUp}
+              placeholder={sessionUp ? 'Type to your partner…' : 'Type to your partner… (starts a session automatically)'}
               rows={2}
             />
             <div className="cbtns">
-              <button className="primary" onClick={onSend} disabled={!sessionUp}>Send</button>
+              <button className="primary" onClick={onSend}>Send</button>
               <button onClick={() => window.sidlf.interrupt()} disabled={!sessionUp}>Stop</button>
             </div>
           </div>

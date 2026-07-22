@@ -11,8 +11,8 @@ import * as THREE from 'three';
 
 export type DayPhase = 'Dawn' | 'Day' | 'Dusk' | 'Night';
 
-/** Seconds for one full day→night→day cycle. */
-const DAY_LENGTH = 180;
+/** Seconds for one full day→night→day cycle (one hour). */
+const DAY_LENGTH = 3600;
 
 export function DayNight({
   onTick,
