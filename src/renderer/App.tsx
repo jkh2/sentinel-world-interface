@@ -5,6 +5,7 @@ import { PLACEABLE, GRASS, blockName, type BlockId } from './world/voxel/blocks'
 import type { AgentOutputEvent, MessageSource } from '../shared/events';
 import type { AgentSessionStatus, CapabilityReport, CliKind } from '../shared/types';
 import type { WorldAction } from '../shared/worldActions';
+import type { DayPhase } from './world/DayNight';
 
 interface Message {
   id: string;
@@ -41,6 +42,11 @@ export function App(): JSX.Element {
   const [sessionUp, setSessionUp] = useState(false);
   const [speech, setSpeech] = useState('');
   const [agentCommand, setAgentCommand] = useState<WorldAction | null>(null);
+
+  // Day/night
+  const [dayPhase, setDayPhase] = useState<DayPhase>('Day');
+  const [isNight, setIsNight] = useState(false);
+  const [clock, setClock] = useState('06:00');
 
   // Floating chat window — persistent, movable, resizable; never tied to
   // pointer-lock state (that was the bug: clicking re-locked and hid it).
@@ -176,6 +182,14 @@ export function App(): JSX.Element {
     setInventory((inv) => ({ ...inv, [id]: Math.max(0, (inv[id] ?? 0) - 1) }));
     setVersion((v) => v + 1);
   };
+  const onDayTick = (t: number, night: boolean, phase: DayPhase): void => {
+    setDayPhase(phase);
+    setIsNight(night);
+    const hrs = t * 24;
+    const hh = Math.floor(hrs);
+    const mm = Math.floor((hrs - hh) * 60);
+    setClock(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
+  };
 
   // --- session actions ---
   async function onStart(): Promise<void> {
@@ -223,10 +237,17 @@ export function App(): JSX.Element {
         agentSpeech={locked ? speech : ''}
         agentCommand={agentCommand}
         onAgentWorldEdit={() => setVersion((v) => v + 1)}
+        onDayTick={onDayTick}
       />
 
       {/* crosshair — only while in the valley */}
       {locked && <div className="crosshair">＋</div>}
+
+      {/* day/night clock */}
+      <div className={`daybadge ${isNight ? 'night' : ''}`}>
+        {dayPhase === 'Dawn' ? '🌅' : dayPhase === 'Day' ? '☀️' : dayPhase === 'Dusk' ? '🌇' : '🌙'}{' '}
+        {clock} · {dayPhase}
+      </div>
 
       {/* inventory HUD */}
       <div className="inv">

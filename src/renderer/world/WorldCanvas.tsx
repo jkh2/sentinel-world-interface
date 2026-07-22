@@ -3,11 +3,11 @@
 // in App — the world client holds no CLI logic.
 
 import { Canvas } from '@react-three/fiber';
-import { Sky } from '@react-three/drei';
 import { VoxelTerrain } from './VoxelTerrain';
 import { Scenery } from './Scenery';
 import { Player } from './Player';
 import { AgentPresence } from './AgentPresence';
+import { DayNight, type DayPhase } from './DayNight';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import type { BlockId } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
@@ -23,6 +23,7 @@ interface Props {
   agentSpeech: string;
   agentCommand: WorldAction | null;
   onAgentWorldEdit: () => void;
+  onDayTick: (timeOfDay: number, isNight: boolean, phase: DayPhase) => void;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -32,22 +33,8 @@ export function WorldCanvas(props: Props): JSX.Element {
       camera={{ fov: 74, near: 0.1, far: 500, position: [28, 22, 44] }}
       gl={{ antialias: true }}
     >
-      {/* High-desert golden hour. */}
-      <Sky sunPosition={[80, 14, 40]} turbidity={7} rayleigh={2.2} mieCoefficient={0.006} mieDirectionalG={0.85} />
       <fog attach="fog" args={['#e2d3b2', 45, 180]} />
-      <hemisphereLight args={['#e7edf5', '#4f4432', 0.7]} />
-      <directionalLight
-        castShadow
-        position={[60, 55, 20]}
-        intensity={1.2}
-        color="#ffe9c4"
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-80}
-        shadow-camera-right={80}
-        shadow-camera-top={80}
-        shadow-camera-bottom={-80}
-        shadow-camera-far={200}
-      />
+      <DayNight onTick={props.onDayTick} />
       <VoxelTerrain
         world={props.world}
         version={props.version}
