@@ -4,6 +4,7 @@ import { VoxelWorld } from './world/voxel/VoxelWorld';
 import { PLACEABLE, GRASS, blockName, type BlockId } from './world/voxel/blocks';
 import type { AgentOutputEvent, MessageSource } from '../shared/events';
 import type { AgentSessionStatus, CapabilityReport, CliKind } from '../shared/types';
+import type { WorldAction } from '../shared/worldActions';
 
 interface Message {
   id: string;
@@ -39,6 +40,7 @@ export function App(): JSX.Element {
   const [permission, setPermission] = useState<PermissionReq | null>(null);
   const [sessionUp, setSessionUp] = useState(false);
   const [speech, setSpeech] = useState('');
+  const [agentCommand, setAgentCommand] = useState<WorldAction | null>(null);
 
   const streamingId = useRef<string | null>(null);
   const transcriptEnd = useRef<HTMLDivElement | null>(null);
@@ -121,6 +123,13 @@ export function App(): JSX.Element {
         streamingId.current = null;
         if (event.kind === 'result') setActivity('here with you');
         break;
+      case 'world-action': {
+        setAgentCommand(event.action);
+        const a = event.action;
+        const desc = 'target' in a ? `${a.action} → ${a.target}` : a.action;
+        addMessage('World Action', desc);
+        break;
+      }
       case 'permission-request':
         setPermission({ id: event.id, tool: event.tool, command: event.command });
         setActivity('awaiting your approval');
@@ -191,6 +200,7 @@ export function App(): JSX.Element {
         onPlace={onPlace}
         agentStatus={bubbleStatus}
         agentSpeech={locked ? speech : ''}
+        agentCommand={agentCommand}
       />
 
       {/* crosshair — only while in the valley */}

@@ -9,6 +9,7 @@ import { Player } from './Player';
 import { AgentPresence } from './AgentPresence';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import type { BlockId } from './voxel/blocks';
+import type { WorldAction } from '../../shared/worldActions';
 
 interface Props {
   world: VoxelWorld;
@@ -19,6 +20,7 @@ interface Props {
   onPlace: (id: BlockId) => void;
   agentStatus: string;
   agentSpeech: string;
+  agentCommand: WorldAction | null;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -53,7 +55,12 @@ export function WorldCanvas(props: Props): JSX.Element {
         onPlace={props.onPlace}
       />
       <Player world={props.world} />
-      <AgentPresence world={props.world} status={props.agentStatus} speech={props.agentSpeech} />
+      <AgentPresence
+        world={props.world}
+        status={props.agentStatus}
+        speech={props.agentSpeech}
+        command={props.agentCommand}
+      />
     </Canvas>
   );
 }

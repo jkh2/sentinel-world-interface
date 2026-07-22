@@ -17,6 +17,7 @@
 
 import type { AgentOutputEvent } from '../../shared/events';
 import type { CapabilityReport, WorkActivity } from '../../shared/types';
+import { extractWorldActions } from '../../shared/worldActions';
 
 /** Map a Claude tool name to the human-facing work-activity label. */
 export function toolToActivity(tool: string): WorkActivity {
@@ -76,15 +77,20 @@ export class ClaudeStreamParser {
         return this.handleStreamEvent(obj.event);
       case 'assistant':
         return this.handleAssistantSnapshot(obj.message);
-      case 'result':
+      case 'result': {
+        const raw = typeof obj.result === 'string' ? obj.result : '';
+        // Strip any world-action envelopes from the final result text (actions
+        // were already emitted from the assistant snapshot).
+        const { cleaned } = extractWorldActions(raw);
         return this.emit({
           kind: 'result',
-          text: typeof obj.result === 'string' ? obj.result : '',
+          text: cleaned,
           costUsd: obj.total_cost_usd,
           durationMs: obj.duration_ms,
           numTurns: obj.num_turns,
           isError: !!obj.is_error,
         });
+      }
       default:
         return; // rate_limit_event and others: ignore for MVP
     }
@@ -165,7 +171,10 @@ export class ClaudeStreamParser {
     if (!message?.content) return;
     for (const block of message.content) {
       if (block.type === 'text' && block.text) {
-        this.emit({ kind: 'assistant-message', text: block.text });
+        // Extract any avatar actions I chose, and show only the cleaned words.
+        const { actions, cleaned } = extractWorldActions(block.text);
+        for (const action of actions) this.emit({ kind: 'world-action', action });
+        if (cleaned) this.emit({ kind: 'assistant-message', text: cleaned });
       }
     }
   }

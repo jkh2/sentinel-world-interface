@@ -38,6 +38,17 @@ export class MockAgentAdapter extends BaseAgentAdapter {
     this.setStatus('thinking');
     await sleep(120);
 
+    // Keyword-driven world actions, so avatar movement can be tested offline.
+    const m = message.toLowerCase();
+    if (/\b(come|here|follow)\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'follow_human' } });
+    else if (/\bpond\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'walk_to', target: 'pond_edge' } });
+    else if (/\bbench\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'walk_to', target: 'bench_north' } });
+    else if (/\bpavilion\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'walk_to', target: 'pavilion_center' } });
+    if (/\bsit\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'sit' } });
+    if (/\bstand\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'stand' } });
+    if (/\bstop\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'stop' } });
+    if (/\b(wave|hi|hello|hey)\b/.test(m)) this.emit({ kind: 'world-action', action: { action: 'wave' } });
+
     // Simulate a permission request when asked to do something sensitive.
     if (/\b(delete|remove|rm|force|push)\b/i.test(message)) {
       this.setStatus('waiting-permission');

@@ -11,6 +11,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { BaseAgentAdapter } from './AgentSessionAdapter';
 import { ClaudeStreamParser } from './claudeStreamParser';
 import { detectClaudeCapability } from './capability';
+import { worldProtocolPrompt } from '../../shared/worldActions';
 import type { CliKind, SessionOptions } from '../../shared/types';
 
 export class ClaudeCodeAdapter extends BaseAgentAdapter {
@@ -38,6 +39,9 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
       'stream-json',
       '--include-partial-messages',
       '--verbose',
+      // Teach the live session how to move its avatar in the world.
+      '--append-system-prompt',
+      worldProtocolPrompt(),
     ];
     if (options.model) args.push('--model', options.model);
     if (options.resume) args.push('--resume', options.resume);

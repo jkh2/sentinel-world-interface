@@ -11,6 +11,7 @@ import type {
   CapabilityReport,
   WorkActivity,
 } from './types';
+import type { WorldAction } from './worldActions';
 
 /** Labels every message in the conversation transcript carries. */
 export type MessageSource =
@@ -66,6 +67,8 @@ export type AgentOutputEvent =
       numTurns?: number;
       isError: boolean;
     }
+  /** A validated avatar action the AI chose to perform (walk, sit, wave…). */
+  | { kind: 'world-action'; action: WorldAction }
   /** Raw stdout/terminal passthrough — feeds the terminal drawer, kept
    *  separate from the cleaned conversation transcript. */
   | { kind: 'raw'; data: string }
