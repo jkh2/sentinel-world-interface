@@ -8,6 +8,7 @@ import { Scenery } from './Scenery';
 import { Player } from './Player';
 import { AgentPresence } from './AgentPresence';
 import { DayNight, type DayPhase } from './DayNight';
+import { ZombieManager } from './ZombieManager';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import type { BlockId } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
@@ -24,6 +25,8 @@ interface Props {
   agentCommand: WorldAction | null;
   onAgentWorldEdit: () => void;
   onDayTick: (timeOfDay: number, isNight: boolean, phase: DayPhase) => void;
+  isNight: boolean;
+  onZombieCount: (n: number) => void;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -50,6 +53,12 @@ export function WorldCanvas(props: Props): JSX.Element {
         status={props.agentStatus}
         speech={props.agentSpeech}
         command={props.agentCommand}
+        onWorldEdit={props.onAgentWorldEdit}
+      />
+      <ZombieManager
+        world={props.world}
+        isNight={props.isNight}
+        onCount={props.onZombieCount}
         onWorldEdit={props.onAgentWorldEdit}
       />
     </Canvas>

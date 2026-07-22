@@ -4,7 +4,7 @@
 // day; faster waves at night). Lights/fog are mutated per-frame (cheap); the
 // Sky shader's sun follows on a throttle.
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
 import * as THREE from 'three';
@@ -31,6 +31,18 @@ export function DayNight({
   const fogNight = useMemo(() => new THREE.Color('#0b1826'), []);
   const fogDusk = useMemo(() => new THREE.Color('#b9713f'), []);
   const tmp = useMemo(() => new THREE.Color(), []);
+
+  // Dev/test keys: N jumps to deep night, M jumps to morning (ignored while typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+      if (e.code === 'KeyN') time.current = 0.0;
+      if (e.code === 'KeyM') time.current = 0.3;
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useFrame((state, dt) => {
     time.current = (time.current + Math.min(dt, 0.05) / DAY_LENGTH) % 1;

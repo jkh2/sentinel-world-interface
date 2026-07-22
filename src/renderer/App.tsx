@@ -47,6 +47,7 @@ export function App(): JSX.Element {
   const [dayPhase, setDayPhase] = useState<DayPhase>('Day');
   const [isNight, setIsNight] = useState(false);
   const [clock, setClock] = useState('06:00');
+  const [zombieCount, setZombieCount] = useState(0);
 
   // Floating chat window — persistent, movable, resizable; never tied to
   // pointer-lock state (that was the bug: clicking re-locked and hid it).
@@ -254,6 +255,8 @@ export function App(): JSX.Element {
         agentCommand={agentCommand}
         onAgentWorldEdit={() => setVersion((v) => v + 1)}
         onDayTick={onDayTick}
+        isNight={isNight}
+        onZombieCount={setZombieCount}
       />
 
       {/* crosshair — only while in the valley */}
@@ -263,6 +266,7 @@ export function App(): JSX.Element {
       <div className={`daybadge ${isNight ? 'night' : ''}`}>
         {dayPhase === 'Dawn' ? '🌅' : dayPhase === 'Day' ? '☀️' : dayPhase === 'Dusk' ? '🌇' : '🌙'}{' '}
         {clock} · {dayPhase}
+        {zombieCount > 0 ? ` · 🧟 ${zombieCount}` : ''}
       </div>
 
       {/* inventory HUD */}
