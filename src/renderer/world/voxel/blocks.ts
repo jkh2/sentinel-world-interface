@@ -22,9 +22,12 @@ export const BLOCKS: Record<BlockId, BlockDef> = {
   [DIRT]: { id: DIRT, name: 'Earth', color: [0.5, 0.38, 0.27] }, // warm brown
   [STONE]: { id: STONE, name: 'Stone', color: [0.55, 0.53, 0.5] }, // muted tan-grey
   [SAND]: { id: SAND, name: 'Sand', color: [0.78, 0.69, 0.46] }, // pale gold
+  [WATER]: { id: WATER, name: 'Water', color: [0.23, 0.45, 0.58] }, // used for HUD swatch
 };
 
 /** Blocks the human can select to place, in HUD order. */
+// WATER is defined and ready but kept out of the HUD until the flow simulation
+// lands as its own feature (parked deliberately, not half-wired).
 export const PLACEABLE: BlockId[] = [GRASS, DIRT, STONE, SAND];
 
 export function blockName(id: BlockId): string {

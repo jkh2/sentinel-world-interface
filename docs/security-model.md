@@ -9,6 +9,37 @@ underlying CLI provides.
 
 ---
 
+## Current implementation status (2026-07-22, reconciled with Orion's audit)
+
+This document describes the intended model. To stay honest about what is
+actually wired today vs. planned — an independent read-only audit by Orion
+Sentinel flagged that earlier wording here overclaimed:
+
+- **Electron sandbox is NOT enabled** (`sandbox: false` in the main process).
+  `contextIsolation` is on and `nodeIntegration` is off, so the renderer still
+  has no direct Node/require access — but "sandboxed" was too strong. Enabling
+  the full sandbox is a hardening item.
+- **Permission Approve/Deny is UI-only right now.** The buttons dismiss the
+  panel; the approval is **not yet routed back into the live CLI session**. The
+  CLI's own default prompting still governs real actions. Wiring the response
+  through is a planned increment.
+- **The raw-terminal audit drawer is not present in the current world UI.** It
+  existed in the Phase 1 window and was dropped in the voxel-world rewrite; it
+  is planned to return. The `raw` event still flows to the app.
+- **Renderer→main IPC is not yet validated in the main process.** `cwd`, `env`,
+  `permissionMode`, `resume`, `model` cross the boundary and reach spawning
+  without main-side allow-listing. Low-risk on a trusted personal machine;
+  **required hardening before the public edition**, where the user/model are
+  untrusted.
+- **Dependency advisories:** `npm audit` reports high/moderate findings in the
+  Electron/Vite toolchain — a careful (possibly-breaking) update pass is
+  queued, not yet done.
+
+The sections below are the target model; treat the items above as the honest
+gap list until each is closed.
+
+---
+
 ## 1. Preserve the CLI's own permission system
 
 - The app **never** enables a permission-skipping flag by default. It does not
