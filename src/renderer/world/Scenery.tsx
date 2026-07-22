@@ -1,16 +1,30 @@
-// Low-poly life for the valley: scattered trees, a pond, benches, and a
-// pavilion — placed on the voxel surface so the named locations become real
-// places you (and I) can actually walk to. Pure geometry, no assets. These sit
-// on top of the terrain; digging beneath them leaves them floating (as in any
-// voxel world) — fine for now.
+// Low-poly life for the valley: harvestable trees, a pond, benches, and a
+// pavilion. Trees can be chopped (click one) to yield wood + fruit and then
+// vanish — the resource source for crafting and healing. Pure geometry.
 
-import { useMemo } from 'react';
+import { useState } from 'react';
+import type { ThreeEvent } from '@react-three/fiber';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import { navPoint } from './navPoints';
 
-function Tree({ x, y, z, s }: { x: number; y: number; z: number; s: number }): JSX.Element {
+interface TreeData {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  s: number;
+}
+
+function Tree({ x, y, z, s, onChop }: TreeData & { onChop: () => void }): JSX.Element {
   return (
-    <group position={[x, y, z]} scale={s}>
+    <group
+      position={[x, y, z]}
+      scale={s}
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation();
+        onChop();
+      }}
+    >
       <mesh position={[0, 0.7, 0]} castShadow>
         <cylinderGeometry args={[0.16, 0.22, 1.4, 6]} />
         <meshLambertMaterial color="#6b4f33" />
@@ -22,6 +36,11 @@ function Tree({ x, y, z, s }: { x: number; y: number; z: number; s: number }): J
       <mesh position={[0, 2.7, 0]} castShadow>
         <coneGeometry args={[0.7, 1.4, 7]} />
         <meshLambertMaterial color="#57713f" />
+      </mesh>
+      {/* a bit of fruit */}
+      <mesh position={[0.35, 2.0, 0.25]}>
+        <sphereGeometry args={[0.12, 8, 8]} />
+        <meshLambertMaterial color="#c94f4f" />
       </mesh>
     </group>
   );
@@ -45,9 +64,7 @@ function Bench({ x, y, z }: { x: number; y: number; z: number }): JSX.Element {
 }
 
 function Pavilion({ x, y, z }: { x: number; y: number; z: number }): JSX.Element {
-  const posts = [
-    [-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6],
-  ];
+  const posts = [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]];
   return (
     <group position={[x, y, z]}>
       {posts.map(([px, pz], i) => (
@@ -68,26 +85,39 @@ function Pavilion({ x, y, z }: { x: number; y: number; z: number }): JSX.Element
   );
 }
 
-export function Scenery({ world }: { world: VoxelWorld }): JSX.Element {
-  const trees = useMemo(() => {
-    const out: { x: number; y: number; z: number; s: number }[] = [];
-    // Deterministic scatter, skipping near spawns and the pond.
-    const avoid = ['spawn_human', 'spawn_agent', 'pond_edge']
-      .map((n) => navPoint(n)!)
-      .filter(Boolean);
-    let seed = 1337;
-    const rand = () => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
-    };
-    for (let i = 0; i < 40; i++) {
-      const x = 3 + rand() * (world.sx - 6);
-      const z = 3 + rand() * (world.sz - 6);
-      if (avoid.some((p) => Math.hypot(p.x - x, p.z - z) < 5)) continue;
-      out.push({ x, y: world.surfaceHeight(x, z), z, s: 0.8 + rand() * 0.6 });
-    }
-    return out;
-  }, [world]);
+function makeTrees(world: VoxelWorld): TreeData[] {
+  const out: TreeData[] = [];
+  const avoid = ['spawn_human', 'spawn_agent', 'pond_edge']
+    .map((n) => navPoint(n)!)
+    .filter(Boolean);
+  let seed = 1337;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  let id = 0;
+  for (let i = 0; i < 40; i++) {
+    const x = 3 + rand() * (world.sx - 6);
+    const z = 3 + rand() * (world.sz - 6);
+    if (avoid.some((p) => Math.hypot(p.x - x, p.z - z) < 5)) continue;
+    out.push({ id: id++, x, y: world.surfaceHeight(x, z), z, s: 0.8 + rand() * 0.6 });
+  }
+  return out;
+}
+
+export function Scenery({
+  world,
+  onHarvest,
+}: {
+  world: VoxelWorld;
+  onHarvest: () => void;
+}): JSX.Element {
+  const [trees, setTrees] = useState<TreeData[]>(() => makeTrees(world));
+
+  const chop = (id: number): void => {
+    setTrees((ts) => ts.filter((t) => t.id !== id));
+    onHarvest();
+  };
 
   const pond = navPoint('pond_edge')!;
   const bN = navPoint('bench_north')!;
@@ -96,11 +126,10 @@ export function Scenery({ world }: { world: VoxelWorld }): JSX.Element {
 
   return (
     <group>
-      {trees.map((t, i) => (
-        <Tree key={i} x={t.x} y={t.y} z={t.z} s={t.s} />
+      {trees.map((t) => (
+        <Tree key={t.id} {...t} onChop={() => chop(t.id)} />
       ))}
 
-      {/* pond — a calm translucent disc just above the surface */}
       <mesh
         position={[pond.x + 0.5, world.surfaceHeight(pond.x, pond.z) + 0.05, pond.z + 0.5]}
         rotation={[-Math.PI / 2, 0, 0]}

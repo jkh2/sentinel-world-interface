@@ -27,6 +27,10 @@ interface Props {
   onDayTick: (timeOfDay: number, isNight: boolean, phase: DayPhase) => void;
   isNight: boolean;
   onZombieCount: (n: number) => void;
+  onHarvestTree: () => void;
+  hasSpear: boolean;
+  respawnSignal: number;
+  onPlayerDamage: (d: number) => void;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -46,7 +50,7 @@ export function WorldCanvas(props: Props): JSX.Element {
         onDig={props.onDig}
         onPlace={props.onPlace}
       />
-      <Scenery world={props.world} />
+      <Scenery world={props.world} onHarvest={props.onHarvestTree} />
       <Player world={props.world} />
       <AgentPresence
         world={props.world}
@@ -58,8 +62,11 @@ export function WorldCanvas(props: Props): JSX.Element {
       <ZombieManager
         world={props.world}
         isNight={props.isNight}
+        hasSpear={props.hasSpear}
+        respawnSignal={props.respawnSignal}
         onCount={props.onZombieCount}
         onWorldEdit={props.onAgentWorldEdit}
+        onPlayerDamage={props.onPlayerDamage}
       />
     </Canvas>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { WorldCanvas } from './world/WorldCanvas';
 import { VoxelWorld } from './world/voxel/VoxelWorld';
-import { PLACEABLE, GRASS, blockName, type BlockId } from './world/voxel/blocks';
+import { PLACEABLE, GRASS, STONE, blockName, type BlockId } from './world/voxel/blocks';
 import type { AgentOutputEvent, MessageSource } from '../shared/events';
 import type { AgentSessionStatus, CapabilityReport, CliKind } from '../shared/types';
 import type { WorldAction } from '../shared/worldActions';
@@ -48,6 +48,13 @@ export function App(): JSX.Element {
   const [isNight, setIsNight] = useState(false);
   const [clock, setClock] = useState('06:00');
   const [zombieCount, setZombieCount] = useState(0);
+
+  // Survival
+  const [hp, setHp] = useState(100);
+  const [wood, setWood] = useState(0);
+  const [fruit, setFruit] = useState(0);
+  const [hasSpear, setHasSpear] = useState(false);
+  const [respawnSignal, setRespawnSignal] = useState(0);
 
   // Floating chat window — persistent, movable, resizable; never tied to
   // pointer-lock state (that was the bug: clicking re-locked and hid it).
@@ -201,6 +208,53 @@ export function App(): JSX.Element {
     setClock(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`);
   };
 
+  // Survival actions
+  const onHarvestTree = (): void => {
+    setWood((w) => w + 2);
+    setFruit((f) => f + 1);
+  };
+  const craftSpear = (): void => {
+    if (hasSpear) return;
+    if (wood >= 2 && (inventory[STONE] ?? 0) >= 1) {
+      setWood((w) => w - 2);
+      setInventory((inv) => ({ ...inv, [STONE]: (inv[STONE] ?? 0) - 1 }));
+      setHasSpear(true);
+      addMessage('System', 'Crafted a spear! Left-click a zombie to strike it.');
+    } else {
+      addMessage('System', 'Need 2 wood + 1 stone for a spear. Chop trees, mine stone.');
+    }
+  };
+  const eatFruit = (): void => {
+    if (fruit > 0 && hp < 100) {
+      setFruit((f) => f - 1);
+      setHp((h) => Math.min(100, h + 25));
+    }
+  };
+  const onPlayerDamage = (d: number): void => {
+    setHp((h) => {
+      const nh = h - d;
+      if (nh <= 0) {
+        setRespawnSignal((s) => s + 1);
+        addMessage('System', 'You fell — respawned, and the horde scattered.');
+        return 100;
+      }
+      return nh;
+    });
+  };
+
+  // Craft (C) / eat fruit (F) keys — usable during locked play; ignored while typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return;
+      if (e.code === 'KeyC') craftSpear();
+      if (e.code === 'KeyF') eatFruit();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wood, fruit, hp, hasSpear, inventory]);
+
   // --- session actions ---
   async function onStart(): Promise<void> {
     if (cli !== 'mock' && !projectDir) {
@@ -257,6 +311,10 @@ export function App(): JSX.Element {
         onDayTick={onDayTick}
         isNight={isNight}
         onZombieCount={setZombieCount}
+        onHarvestTree={onHarvestTree}
+        hasSpear={hasSpear}
+        respawnSignal={respawnSignal}
+        onPlayerDamage={onPlayerDamage}
       />
 
       {/* crosshair — only while in the valley */}
@@ -267,6 +325,33 @@ export function App(): JSX.Element {
         {dayPhase === 'Dawn' ? '🌅' : dayPhase === 'Day' ? '☀️' : dayPhase === 'Dusk' ? '🌇' : '🌙'}{' '}
         {clock} · {dayPhase}
         {zombieCount > 0 ? ` · 🧟 ${zombieCount}` : ''}
+      </div>
+
+      {/* survival HUD */}
+      <div className="survival">
+        <div className="hbar">
+          <div className="hbar-fill" style={{ width: `${hp}%` }} />
+          <span className="hbar-txt">{hp} HP</span>
+        </div>
+        <div className="stats">
+          🪵 {wood} · 🍎 {fruit} · {hasSpear ? '🗡 spear' : 'unarmed'}
+        </div>
+        <div className="sbtns">
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={craftSpear}
+            disabled={hasSpear || wood < 2 || (inventory[STONE] ?? 0) < 1}
+          >
+            Craft Spear (C)
+          </button>
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={eatFruit}
+            disabled={fruit < 1 || hp >= 100}
+          >
+            Eat Fruit (F)
+          </button>
+        </div>
       </div>
 
       {/* inventory HUD */}
@@ -289,8 +374,8 @@ export function App(): JSX.Element {
       {/* controls hint */}
       <div className="hint">
         {locked
-          ? 'WASD move · Shift run · L-click dig · R-click place · 1–4 block · Esc to step out & chat'
-          : 'Click the valley to enter · dig to gather earth, then build with it'}
+          ? 'WASD move · L-click dig / chop tree / strike zombie · R-click place · 1–4 block · C spear · F fruit · N/M night/day · Esc chat'
+          : 'Click the valley to enter · chop trees, mine stone, craft a spear, survive the night'}
       </div>
 
       {/* toggle — always available */}

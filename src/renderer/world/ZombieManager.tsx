@@ -7,8 +7,9 @@
 // Perf: a fixed pool of meshes moved imperatively in useFrame (no per-frame
 // React re-render). Zombie data lives in a ref.
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import { AIR, GRASS, DIRT, STONE, SAND, type BlockId } from './voxel/blocks';
@@ -18,11 +19,13 @@ interface Zombie {
   z: number;
   y: number;
   yaw: number;
+  hp: number;
   attackKey: string | null; // "x,y,z" of the wall block being chewed
   attackProgress: number; // seconds accumulated against it
 }
 
 const MAX = 22;
+const ZOMBIE_HP = 2; // spear hits to kill
 
 /** Seconds of chewing to break a block — stone holds far longer than dirt. */
 function toughness(id: BlockId): number {
@@ -88,19 +91,43 @@ function findSpawn(world: VoxelWorld, px: number, pz: number): { x: number; z: n
 export function ZombieManager({
   world,
   isNight,
+  hasSpear,
+  respawnSignal,
   onCount,
   onWorldEdit,
+  onPlayerDamage,
 }: {
   world: VoxelWorld;
   isNight: boolean;
+  hasSpear: boolean;
+  respawnSignal: number;
   onCount: (n: number) => void;
   onWorldEdit: () => void;
+  onPlayerDamage: (d: number) => void;
 }): JSX.Element {
   const { camera } = useThree();
   const zombies = useRef<Zombie[]>([]);
   const groupRefs = useRef<(THREE.Group | null)[]>([]);
   const spawnTimer = useRef(0);
   const countTimer = useRef(0);
+  const dmgTimer = useRef(0);
+  const hasSpearRef = useRef(hasSpear);
+  hasSpearRef.current = hasSpear;
+  const onDamageRef = useRef(onPlayerDamage);
+  onDamageRef.current = onPlayerDamage;
+
+  // Player fell / respawned — scatter the horde.
+  useEffect(() => {
+    zombies.current = [];
+  }, [respawnSignal]);
+
+  const strike = (i: number): void => {
+    if (!hasSpearRef.current) return; // need a spear to fight
+    const z = zombies.current[i];
+    if (!z) return;
+    z.hp -= 1;
+    if (z.hp <= 0) zombies.current.splice(i, 1);
+  };
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.05);
@@ -122,6 +149,7 @@ export function ZombieManager({
           z: spot.z,
           y: world.surfaceHeight(spot.x, spot.z),
           yaw: 0,
+          hp: ZOMBIE_HP,
           attackKey: null,
           attackProgress: 0,
         });
@@ -180,6 +208,21 @@ export function ZombieManager({
       z.yaw = Math.atan2(px - z.x, pz - z.z);
     }
 
+    // contact damage — zombies that reach you hurt you
+    let contact = 0;
+    for (const z of zombies.current) {
+      if (Math.hypot(px - z.x, pz - z.z) < 1.5) contact++;
+    }
+    if (contact > 0) {
+      dmgTimer.current += dt;
+      if (dmgTimer.current > 0.8) {
+        dmgTimer.current = 0;
+        onDamageRef.current(6 + Math.min(contact, 3) * 2);
+      }
+    } else {
+      dmgTimer.current = 0;
+    }
+
     // sync the mesh pool
     for (let i = 0; i < MAX; i++) {
       const g = groupRefs.current[i];
@@ -210,6 +253,10 @@ export function ZombieManager({
             groupRefs.current[i] = el;
           }}
           visible={false}
+          onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+            e.stopPropagation();
+            strike(i);
+          }}
         >
           <ZombieFigure />
         </group>
