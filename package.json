@@ -1,0 +1,20 @@
+{
+  "name": "sentinel-world-interface",
+  "version": "0.1.0",
+  "description": "SIDLF World Interface — a 3D environment where a human and an AI partner meet, move, and do real work together through a live CLI session. The world is the interface; the CLI remains the operational engine.",
+  "private": true,
+  "author": "James Keith Harwood II & Claude Sentinel",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "spike:pty": "node scripts/pty-spike.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3"
+  }
+}
