@@ -5,6 +5,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
 import { VoxelTerrain } from './VoxelTerrain';
+import { Scenery } from './Scenery';
 import { Player } from './Player';
 import { AgentPresence } from './AgentPresence';
 import type { VoxelWorld } from './voxel/VoxelWorld';
@@ -55,6 +56,7 @@ export function WorldCanvas(props: Props): JSX.Element {
         onDig={props.onDig}
         onPlace={props.onPlace}
       />
+      <Scenery world={props.world} />
       <Player world={props.world} />
       <AgentPresence
         world={props.world}
