@@ -81,6 +81,16 @@ body {
 .sbtns { display: flex; gap: 6px; margin-top: 8px; }
 .sbtns button { font-size: 11px; padding: 5px 8px; }
 
+/* Game over */
+.gameover {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; background: rgba(8, 6, 6, 0.82); backdrop-filter: blur(4px);
+}
+.go-title { font-size: 56px; font-weight: 800; color: #c94040; letter-spacing: 2px; text-shadow: 0 3px 22px rgba(0,0,0,0.7); }
+.go-sub { color: #c9b8b8; font-size: 15px; }
+.go-btn { font-size: 15px; padding: 10px 22px; margin-top: 8px; }
+
 /* Top bar */
 .topbar {
   position: absolute; top: 0; left: 0; right: 0;

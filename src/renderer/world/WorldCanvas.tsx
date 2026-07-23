@@ -31,6 +31,8 @@ interface Props {
   hasSpear: boolean;
   respawnSignal: number;
   onPlayerDamage: (d: number) => void;
+  paused: boolean;
+  dayResetSignal: number;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -41,7 +43,7 @@ export function WorldCanvas(props: Props): JSX.Element {
       gl={{ antialias: true }}
     >
       <fog attach="fog" args={['#e2d3b2', 45, 180]} />
-      <DayNight onTick={props.onDayTick} />
+      <DayNight onTick={props.onDayTick} resetSignal={props.dayResetSignal} />
       <VoxelTerrain
         world={props.world}
         version={props.version}
@@ -64,6 +66,7 @@ export function WorldCanvas(props: Props): JSX.Element {
         isNight={props.isNight}
         hasSpear={props.hasSpear}
         respawnSignal={props.respawnSignal}
+        paused={props.paused}
         onCount={props.onZombieCount}
         onWorldEdit={props.onAgentWorldEdit}
         onPlayerDamage={props.onPlayerDamage}

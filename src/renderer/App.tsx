@@ -55,6 +55,8 @@ export function App(): JSX.Element {
   const [fruit, setFruit] = useState(0);
   const [hasSpear, setHasSpear] = useState(false);
   const [respawnSignal, setRespawnSignal] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [dayReset, setDayReset] = useState(0);
 
   // Floating chat window — persistent, movable, resizable; never tied to
   // pointer-lock state (that was the bug: clicking re-locked and hid it).
@@ -231,15 +233,28 @@ export function App(): JSX.Element {
     }
   };
   const onPlayerDamage = (d: number): void => {
+    if (gameOver) return;
     setHp((h) => {
       const nh = h - d;
       if (nh <= 0) {
-        setRespawnSignal((s) => s + 1);
-        addMessage('System', 'You fell — respawned, and the horde scattered.');
-        return 100;
+        setGameOver(true);
+        setRespawnSignal((s) => s + 1); // clear the horde
+        if (document.pointerLockElement) document.exitPointerLock();
+        return 0;
       }
       return nh;
     });
+  };
+  const restartGame = (): void => {
+    setGameOver(false);
+    setHp(100);
+    setWood(0);
+    setFruit(0);
+    setHasSpear(false);
+    setInventory({});
+    setRespawnSignal((s) => s + 1); // clear zombies
+    setDayReset((s) => s + 1); // back to morning
+    addMessage('System', 'New game. The valley is fresh — survive.');
   };
 
   // Craft (C) / eat fruit (F) keys — usable during locked play; ignored while typing.
@@ -315,6 +330,8 @@ export function App(): JSX.Element {
         hasSpear={hasSpear}
         respawnSignal={respawnSignal}
         onPlayerDamage={onPlayerDamage}
+        paused={gameOver}
+        dayResetSignal={dayReset}
       />
 
       {/* crosshair — only while in the valley */}
@@ -473,6 +490,14 @@ export function App(): JSX.Element {
             <button className="primary" onClick={() => setPermission(null)}>Approve</button>
             <button className="danger" onClick={() => setPermission(null)}>Deny</button>
           </div>
+        </div>
+      )}
+
+      {gameOver && (
+        <div className="gameover">
+          <div className="go-title">You Died</div>
+          <div className="go-sub">The valley fell quiet. The horde took you.</div>
+          <button className="primary go-btn" onClick={restartGame}>Start a New Game</button>
         </div>
       )}
     </div>

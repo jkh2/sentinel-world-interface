@@ -93,6 +93,7 @@ export function ZombieManager({
   isNight,
   hasSpear,
   respawnSignal,
+  paused,
   onCount,
   onWorldEdit,
   onPlayerDamage,
@@ -101,6 +102,7 @@ export function ZombieManager({
   isNight: boolean;
   hasSpear: boolean;
   respawnSignal: number;
+  paused: boolean;
   onCount: (n: number) => void;
   onWorldEdit: () => void;
   onPlayerDamage: (d: number) => void;
@@ -130,6 +132,7 @@ export function ZombieManager({
   };
 
   useFrame((_, dtRaw) => {
+    if (paused) return; // frozen on game over
     const dt = Math.min(dtRaw, 0.05);
     const px = camera.position.x;
     const pz = camera.position.z;

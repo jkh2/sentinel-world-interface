@@ -16,8 +16,10 @@ const DAY_LENGTH = 3600;
 
 export function DayNight({
   onTick,
+  resetSignal,
 }: {
   onTick: (timeOfDay: number, isNight: boolean, phase: DayPhase) => void;
+  resetSignal: number;
 }): JSX.Element {
   const { scene } = useThree();
   const time = useRef(0.3); // start mid-morning
@@ -43,6 +45,11 @@ export function DayNight({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // New game — reset to morning.
+  useEffect(() => {
+    time.current = 0.3;
+  }, [resetSignal]);
 
   useFrame((state, dt) => {
     time.current = (time.current + Math.min(dt, 0.05) / DAY_LENGTH) % 1;
