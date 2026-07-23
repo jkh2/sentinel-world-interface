@@ -47,9 +47,13 @@ export function Player({ world }: { world: VoxelWorld }): JSX.Element {
   }, [camera, world]);
 
   useFrame((_, dt) => {
-    // Only move while pointer-locked (in-world). When unlocked (using the chat
-    // or menus), WASD belongs to text fields, not the avatar.
-    if (!document.pointerLockElement) return;
+    // Only move while pointer-locked (in-world), and never while a text field
+    // has focus — a defensive guard, not just a lock check: if a browser ever
+    // lets a textarea keep focus through an active pointer lock, WASD must
+    // still go to the text, not the avatar.
+    const el = document.activeElement;
+    const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+    if (!document.pointerLockElement || typing) return;
     const k = keys.current;
     const move = new THREE.Vector3();
     camera.getWorldDirection(fwd.current);
@@ -65,8 +69,25 @@ export function Player({ world }: { world: VoxelWorld }): JSX.Element {
     if (move.lengthSq() > 0) {
       const boost = k['ShiftLeft'] || k['ShiftRight'] ? 1.9 : 1;
       move.normalize().multiplyScalar(SPEED * boost * Math.min(dt, 0.05));
-      camera.position.x += move.x;
-      camera.position.z += move.z;
+
+      // Axis-separated horizontal collision: without this, position could
+      // slip into an undug column, and surfaceHeight() there reports the
+      // *original* terrain height (far above a dug tunnel) — the vertical
+      // floor-follow below then snaps straight up to match, which is what
+      // was launching a player from a cave back to the surface on bumping
+      // an intact wall. Checked at foot and head height so you can't duck
+      // under or reach over a solid wall; separated per axis so you slide
+      // along a wall instead of sticking to it.
+      const footY = camera.position.y - EYE_HEIGHT + 0.1;
+      const headY = camera.position.y - 0.1;
+      const blockedAt = (x: number, z: number): boolean =>
+        world.isSolid(Math.floor(x), Math.floor(footY), Math.floor(z)) ||
+        world.isSolid(Math.floor(x), Math.floor(headY), Math.floor(z));
+
+      const nx = camera.position.x + move.x;
+      if (!blockedAt(nx, camera.position.z)) camera.position.x = nx;
+      const nz = camera.position.z + move.z;
+      if (!blockedAt(camera.position.x, nz)) camera.position.z = nz;
     }
 
     // Keep inside the world.

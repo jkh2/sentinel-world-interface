@@ -49,6 +49,39 @@ call) → **world-actions** (validated execution) → **defend reflex** (always-
 
 ---
 
+## Found in live play (Session 110) — one fixed, two open
+
+James live-tested the MCP wiring and chat hotkeys tonight (both worked — real
+tool-call-driven avatar movement, G/H quick actions fired mid-fight with zero
+unlock) and surfaced three real gameplay issues digging/mining.
+
+- ✅ **Fixed**: bumping an undug wall while caving launched the player back to
+  the surface. Root cause: `Player.tsx` had no horizontal collision at all —
+  position could slip into a column you hadn't dug, and `surfaceHeight()` for
+  an undug column reports the *original* terrain height; the vertical
+  floor-follow then snapped straight up to match. Fixed with axis-separated
+  collision (checked at foot + head height, so you slide along a wall instead
+  of sticking or slipping through it) — this removes the root cause, not just
+  the symptom, since position can no longer enter an unmined column at all.
+- **Open — mesh-rebuild stutter**: "mine ~4-5 blocks fast, then digging pauses
+  a few seconds before working again." Near-certain cause: `VoxelTerrain.tsx`'s
+  `buildGeometry(world)` rebuilds the *entire* ~100k-cell mesh synchronously on
+  every single dig/place — a burst of rapid edits queues that many full
+  rebuilds back-to-back. The scoped fix (smaller than real chunking): batch
+  rapid edits into one remesh per animation frame (dirty-flag + rAF) instead of
+  one synchronous rebuild per click. True incremental/local remeshing (only
+  recompute faces for the edited cell + neighbors) is the fuller fix, but
+  bigger — worth doing if batching alone doesn't feel smooth enough once tried.
+- **Open — side-face mining, needs one more live data point before touching
+  code**: clicking an exposed pit-wall side face didn't register; clicking a
+  block's top always did. Traced `VoxelTerrain.tsx`'s dig-cell math and
+  `mesher.ts`'s per-face normals — both look correct for any face on paper, so
+  this may be **line-of-sight occlusion** (the near lip of the pit blocking the
+  ray to the wall behind it) rather than a code bug. Next test: back up a step
+  or change angle when it happens and see if the side face then mines fine — if
+  it does, this isn't a bug; if it still fails from a clearly unobstructed
+  angle, that's the real repro to chase.
+
 ## Next — explore together (the heart, per James's 7 Days to Die memory)
 
 The point isn't infinite-map spectacle; it's **shared discovery becoming durable
