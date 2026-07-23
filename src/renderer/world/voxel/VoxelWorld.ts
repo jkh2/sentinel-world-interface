@@ -2,7 +2,7 @@
 // generation and a couple of queries. Deliberately simple (one chunk) for the
 // MVP — chunking/streaming is a later concern.
 
-import { AIR, DIRT, GRASS, SAND, STONE, type BlockId } from './blocks';
+import { AIR, BEDROCK, DIRT, GRASS, SAND, STONE, type BlockId } from './blocks';
 
 export class VoxelWorld {
   readonly sx: number;
@@ -10,7 +10,8 @@ export class VoxelWorld {
   readonly sz: number;
   private data: Uint8Array;
 
-  constructor(sx = 56, sy = 24, sz = 56) {
+  // Taller by default so there is real depth to dig down through to bedrock.
+  constructor(sx = 56, sy = 32, sz = 56) {
     this.sx = sx;
     this.sy = sy;
     this.sz = sz;
@@ -42,15 +43,27 @@ export class VoxelWorld {
     return this.get(x, y, z) !== AIR;
   }
 
-  /** Gentle rolling valley floor. */
+  /** Remove a block, returning true only if something breakable was actually
+   *  dug. Air and BEDROCK never break — this is the single chokepoint every dig
+   *  path (player, agent, zombie) routes through, so bedrock is unbreakable by
+   *  construction rather than by each caller remembering to check. */
+  dig(x: number, y: number, z: number): boolean {
+    const id = this.get(x, y, z);
+    if (id === AIR || id === BEDROCK) return false;
+    this.set(x, y, z, AIR);
+    return true;
+  }
+
+  /** Gentle rolling valley floor, sitting high above the bedrock so there is a
+   *  deep column of stone to mine down through. */
   private heightAt(x: number, z: number): number {
-    const base = 7;
+    const base = 18;
     const h =
       base +
       2.6 * Math.sin(x * 0.16) * Math.cos(z * 0.14) +
       1.6 * Math.sin((x + z) * 0.08) +
       0.9 * Math.sin(x * 0.31 + z * 0.19);
-    return Math.max(2, Math.min(this.sy - 2, Math.round(h)));
+    return Math.max(6, Math.min(this.sy - 6, Math.round(h)));
   }
 
   private generate(): void {
@@ -59,7 +72,8 @@ export class VoxelWorld {
         const h = this.heightAt(x, z);
         for (let y = 0; y < h; y++) {
           let id: BlockId;
-          if (y === h - 1) id = h <= 4 ? SAND : GRASS;
+          if (y === 0) id = BEDROCK; // undiggable floor of the world
+          else if (y === h - 1) id = h <= 6 ? SAND : GRASS;
           else if (y >= h - 4) id = DIRT;
           else id = STONE;
           this.set(x, y, z, id);

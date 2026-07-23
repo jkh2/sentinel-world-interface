@@ -12,7 +12,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { VoxelWorld } from './voxel/VoxelWorld';
-import { AIR, GRASS, DIRT, STONE, SAND, type BlockId } from './voxel/blocks';
+import { AIR, BEDROCK, GRASS, DIRT, STONE, SAND, type BlockId } from './voxel/blocks';
 
 interface Zombie {
   x: number;
@@ -189,7 +189,8 @@ export function ZombieManager({
           const fz = Math.floor(z.z + dz / d);
           const by = world.surfaceHeight(fx, fz) - 1;
           const bid = world.get(fx, by, fz);
-          if (by >= 0 && bid !== AIR) {
+          // Bedrock is unbreakable — a bedrock wall simply stops the zombie.
+          if (by >= 0 && bid !== AIR && bid !== BEDROCK) {
             const key = `${fx},${by},${fz}`;
             if (z.attackKey !== key) {
               z.attackKey = key;
@@ -197,7 +198,7 @@ export function ZombieManager({
             }
             z.attackProgress += dt;
             if (z.attackProgress >= toughness(bid)) {
-              world.set(fx, by, fz, AIR);
+              world.dig(fx, by, fz); // routed through the single dig chokepoint
               onWorldEdit();
               z.attackKey = null;
               z.attackProgress = 0;

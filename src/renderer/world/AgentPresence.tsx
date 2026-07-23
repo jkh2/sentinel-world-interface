@@ -79,8 +79,8 @@ export function AgentPresence({ world, status, speech, command, onWorldEdit }: P
           const surf = world.surfaceHeight(fx, fz); // y of air just above surface
           if (command.action === 'dig_front') {
             const y = surf - 1;
-            if (y >= 0 && world.isSolid(fx, y, fz)) {
-              world.set(fx, y, fz, AIR);
+            // dig() refuses AIR and BEDROCK; only signal an edit if one happened.
+            if (y >= 0 && world.dig(fx, y, fz)) {
               onWorldEdit();
             }
           } else {

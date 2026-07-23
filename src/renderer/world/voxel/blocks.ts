@@ -9,6 +9,7 @@ export const DIRT: BlockId = 2;
 export const STONE: BlockId = 3;
 export const SAND: BlockId = 4;
 export const WATER: BlockId = 5;
+export const BEDROCK: BlockId = 6;
 
 export interface BlockDef {
   id: BlockId;
@@ -23,6 +24,7 @@ export const BLOCKS: Record<BlockId, BlockDef> = {
   [STONE]: { id: STONE, name: 'Stone', color: [0.55, 0.53, 0.5] }, // muted tan-grey
   [SAND]: { id: SAND, name: 'Sand', color: [0.78, 0.69, 0.46] }, // pale gold
   [WATER]: { id: WATER, name: 'Water', color: [0.23, 0.45, 0.58] }, // used for HUD swatch
+  [BEDROCK]: { id: BEDROCK, name: 'Bedrock', color: [0.16, 0.15, 0.18] }, // near-black, undiggable floor
 };
 
 /** Blocks the human can select to place, in HUD order. */

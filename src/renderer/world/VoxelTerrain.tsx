@@ -43,8 +43,8 @@ export function VoxelTerrain({
       const y = Math.floor(p.y - n.y * 0.5);
       const z = Math.floor(p.z - n.z * 0.5);
       const id = world.get(x, y, z);
-      if (id !== AIR) {
-        world.set(x, y, z, AIR);
+      // dig() refuses AIR and BEDROCK; only report a real harvest.
+      if (world.dig(x, y, z)) {
         onDig(id);
       }
     } else if (e.nativeEvent.button === 2) {
