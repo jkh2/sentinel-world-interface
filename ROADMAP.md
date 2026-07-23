@@ -74,9 +74,26 @@ geography** — the thing James loved playing side-by-side with his son.
 
 ## Later
 
-- **Water flow simulation** (parked, design ready): sources spread down + sideways,
-  contained by walls, drain when the source is removed (cellular automaton;
-  `WATER` block id + palette already exist). Self-contained.
+- **Water flow simulation** (parked, design ready; Minecraft mechanics verified
+  Session 109). How Minecraft does it: water carries a **level 0–7** (source =
+  full, flowing gets emptier with distance); falls **downward infinitely**,
+  spreads **7 blocks horizontally** from a source losing one level per step;
+  updates on a **tick (~1 block / 5 ticks), not per frame**; a flowing cell
+  touching **2+ sources on a solid base becomes a source** (the infinite-water
+  2×2 trick); remove the source and unfed cells drain backward.
+  - **Our v1**: parallel `level` array + `sources` set; downward-infinite,
+    horizontal −1/step capped at 7, blocked by solids; a **cellular-automaton
+    "water tick"** over a **dirty set** of recently-changed cells (quiet when
+    nothing changes); drain = the same pass removing unfed cells; a **translucent
+    two-geometry mesher pass** with surface height scaled by level. `WATER` block
+    id + palette already exist. Self-contained, medium effort.
+  - **Honest v1 simplification**: skip Minecraft's flow-toward-nearest-drop
+    pathfinding — plain flood-spread still pools/fills/drains, just less "smart"
+    about racing to a cliff edge. Weighted flow is a later polish.
+  - **Decision (James's, gameplay)**: include the infinite-source 2×2 rule?
+    Lean **yes** — keeps lakes/moats stable and enables a refillable well.
+  - **Gameplay it unlocks**: a **moat as base defense** (do zombies cross water?
+    — a real lever), flooding a mine as a hazard, dam/flood events (Orion's brief).
 - **Infinite procedural world**: chunk the world, generate at the edges, per-chunk
   meshing. Demoted from "flagship" — a bounded-but-unknown valley delivers the
   shared-discovery feeling first; infinite is a later *scaling* concern.
