@@ -12,6 +12,7 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx scripts/test-adapters.ts",
+    "test:generic-llm": "tsx scripts/test-generic-llm.ts",
     "spike:pty": "node scripts/pty-spike.mjs"
   },
   "dependencies": {

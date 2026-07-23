@@ -5,6 +5,9 @@
 /** Which agent backend a session is bound to. */
 export type CliKind = 'claude-code' | 'codex' | 'mock';
 
+/** Every conversational backend, including public-edition API providers. */
+export type AgentBackendKind = CliKind | 'generic-llm';
+
 /** Options for starting an agent session. */
 export interface SessionOptions {
   cli: CliKind;
@@ -65,7 +68,7 @@ export type WorkActivity =
  * when permissionEvents is 'none').
  */
 export interface CapabilityReport {
-  cli: CliKind;
+  cli: AgentBackendKind;
   version: string;
   /** Can be driven through an interactive pseudoterminal. */
   interactivePty: boolean;
