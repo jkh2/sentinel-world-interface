@@ -36,6 +36,8 @@ export type {
   RelativeVector,
   RouteObservation,
   ThreatObservation,
+  VoxelBlockDistance,
+  WorldBearingDegrees,
   WorldObservation,
   WorldEventObservation,
   WorldObservationProvider,

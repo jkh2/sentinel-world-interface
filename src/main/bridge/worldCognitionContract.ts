@@ -1,6 +1,17 @@
 import { NAV_POINTS } from '../../renderer/world/navPoints';
 
+/**
+ * Offset from the observing avatar in voxel-block units, expressed on the
+ * world axes (+X, +Y, +Z), not in camera-local coordinates.
+ */
 export type RelativeVector = { x: number; y: number; z: number };
+/**
+ * World-absolute compass bearing in [0, 360): 0 = +Z and values increase
+ * clockwise. Relative heading is the signed normalized (bearing - facing).
+ */
+export type WorldBearingDegrees = number;
+/** Euclidean distance in voxel-block units. */
+export type VoxelBlockDistance = number;
 export type KnowledgeSource = 'perceived' | 'party-shared' | 'remembered';
 
 export interface ParticipantObservation {
@@ -10,8 +21,8 @@ export interface ParticipantObservation {
   kind: 'human' | 'ai';
   area?: string;
   relative?: RelativeVector;
-  distance?: number;
-  bearingDegrees?: number;
+  distance?: VoxelBlockDistance;
+  bearingDegrees?: WorldBearingDegrees;
   visible: boolean;
   health?: number;
   status?: 'active' | 'downed' | 'carried' | 'missing';
@@ -23,8 +34,8 @@ export interface RouteObservation {
   label: string;
   destination?: string;
   relative?: RelativeVector;
-  distance?: number;
-  bearingDegrees?: number;
+  distance?: VoxelBlockDistance;
+  bearingDegrees?: WorldBearingDegrees;
   state: 'open' | 'blocked' | 'unknown';
   knowledge: KnowledgeSource;
 }
@@ -33,8 +44,8 @@ export interface ChokepointObservation {
   id?: string;
   label: string;
   relative?: RelativeVector;
-  distance?: number;
-  bearingDegrees?: number;
+  distance?: VoxelBlockDistance;
+  bearingDegrees?: WorldBearingDegrees;
   width?: number;
   passable: boolean;
   heldBy?: string;
@@ -45,8 +56,8 @@ export interface ThreatObservation {
   id?: string;
   type: string;
   relative?: RelativeVector;
-  distance: number;
-  bearingDegrees?: number;
+  distance: VoxelBlockDistance;
+  bearingDegrees?: WorldBearingDegrees;
   visible: boolean;
   targeting?: string;
   state?: 'unaware' | 'searching' | 'pursuing' | 'attacking' | 'retreating';
@@ -57,8 +68,8 @@ export interface InteractableObservation {
   type: string;
   label?: string;
   relative?: RelativeVector;
-  distance?: number;
-  bearingDegrees?: number;
+  distance?: VoxelBlockDistance;
+  bearingDegrees?: WorldBearingDegrees;
   state?: string;
 }
 
@@ -89,8 +100,13 @@ export interface WorldObservation {
   self: {
     id?: string;
     name?: string;
+    /**
+     * Coarse place language, not an exact position: "at <name>" only inside a
+     * tight arrival radius, "near <name>" inside the broader local radius, and
+     * a truthful fallback such as "open valley" otherwise.
+     */
     area: string;
-    facingDegrees?: number;
+    facingDegrees?: WorldBearingDegrees;
     health?: number;
     status?: 'active' | 'downed' | 'carried';
     inventory?: Readonly<Record<string, number>>;
@@ -158,7 +174,10 @@ export const COMPANION_SYSTEM_PROMPT = [
   'The tool cannot control the human, access files, run commands, or use a computer.',
   'Choose actions only from the supplied schema. Treat the observation as bounded',
   'and possibly incomplete. Never claim an action succeeded merely because you',
-  'requested it; the game engine validates and executes every request.',
+  'requested it; the game engine validates and executes every request. Bearings',
+  'are world-absolute: 0 degrees is +Z and values increase clockwise; compute a',
+  'relative heading from bearing minus facing. Distances and relative vectors use',
+  'voxel-block units, and relative vectors are expressed on world axes.',
 ].join(' ');
 
 const MAX_PARTY = 8;
