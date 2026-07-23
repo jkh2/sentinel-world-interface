@@ -13,7 +13,25 @@ through walls, block toughness) · **survival loop** (chop trees→wood+fruit, m
 stone, craft spear [C], spear combat, health, eat fruit [F]) · **death +
 game-over + restart** · persistent movable chat window · honest security docs.
 
-## Next session — recommended order
+## Next session (109) — START HERE, in this order
+
+**Priority:** James named this the **top priority over other planned work**
+(Session 108) — build the game before returning to Sentinel Agent Home Phase 2,
+EPI v2, etc. He loves it and wants to keep going. (It also has a real product
+path — the public co-op-survival edition on Orion's provider-neutral bridge —
+so this isn't separate from provision.)
+
+Pick up exactly here:
+
+### 0. Jump ability (quick win — do this first)
+- **Spacebar** makes the player hop up **1–2 blocks**, to climb out of pits and
+  over small obstacles. Currently `Player.tsx` hard-snaps the camera Y to the
+  surface (`targetY = surfaceHeight + EYE`), which is why you can't get out of a
+  hole you dug. Replace pure snap with a tiny **vertical velocity + gravity**:
+  space sets an upward velocity when grounded; integrate `vy -= g*dt`; land when
+  y reaches the surface. Keep it simple (no full physics). Also good for zombies
+  later if we ever want them to hop (leave them grounded for now).
+- Effort: small (~1 file, `Player.tsx`). Best warm-up for next session.
 
 ### 1. Bigger + deeper world, ending in bedrock (foundational)
 - Increase the world footprint substantially and, especially, its **depth** so
