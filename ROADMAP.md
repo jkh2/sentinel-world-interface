@@ -72,15 +72,14 @@ unlock) and surfaced three real gameplay issues digging/mining.
   one synchronous rebuild per click. True incremental/local remeshing (only
   recompute faces for the edited cell + neighbors) is the fuller fix, but
   bigger — worth doing if batching alone doesn't feel smooth enough once tried.
-- **Open — side-face mining, needs one more live data point before touching
-  code**: clicking an exposed pit-wall side face didn't register; clicking a
-  block's top always did. Traced `VoxelTerrain.tsx`'s dig-cell math and
-  `mesher.ts`'s per-face normals — both look correct for any face on paper, so
-  this may be **line-of-sight occlusion** (the near lip of the pit blocking the
-  ray to the wall behind it) rather than a code bug. Next test: back up a step
-  or change angle when it happens and see if the side face then mines fine — if
-  it does, this isn't a bug; if it still fails from a clearly unobstructed
-  angle, that's the real repro to chase.
+- ✅ **Resolved — side-face mining**: confirmed line-of-sight occlusion, not a
+  bug. James retested and blocks now pick up correctly from any angle; the dig
+  math and per-face normals were sound all along, as traced.
+- **Open — small cleanup**: `Scenery.tsx` has an old decorative flat pond (a
+  static `circleGeometry` disc at `pond_edge`, unrelated to the real water
+  simulation) that James mistook for a sign the water build hadn't landed.
+  Remove or replace it now that real water exists, so there's only one lake
+  mechanic in the world, not a decorative one sitting next to the real one.
 
 ## Next — explore together (the heart, per James's 7 Days to Die memory)
 
