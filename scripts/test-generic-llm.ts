@@ -109,6 +109,74 @@ async function anthropicTest(): Promise<void> {
   ));
 }
 
+async function autonomousTurnTest(): Promise<void> {
+  console.log('\n[GenericLLM/autonomous turn] separation and action bound');
+  const requests: Array<Record<string, unknown>> = [];
+  const fakeFetch: typeof fetch = async (_input, init) => {
+    requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    return jsonResponse({
+      choices: [{
+        message: {
+          content: 'Zombie on your left.',
+          tool_calls: [
+            {
+              function: {
+                name: 'world_action',
+                arguments: JSON.stringify({ action: 'look_at', target: 'spawn_human' }),
+              },
+            },
+            {
+              function: {
+                name: 'world_action',
+                arguments: JSON.stringify({ action: 'follow_human' }),
+              },
+            },
+          ],
+        },
+      }],
+    });
+  };
+  const adapter = new GenericLLMAdapter({
+    protocol: 'openai-compatible',
+    baseUrl: 'https://example.test/v1',
+    model: 'test-model',
+  }, { fetch: fakeFetch });
+  const events: AgentOutputEvent[] = [];
+  adapter.onOutput((event) => events.push(event));
+  await adapter.startSession({ cli: 'mock', cwd: '' });
+  const observation = {
+    schemaVersion: 1 as const,
+    observedAt: '2026-07-23T05:00:00Z',
+    context: { mode: 'outdoor' as const, phase: 'night' as const },
+    self: { area: 'open valley' },
+    threats: [{
+      id: 'zombie-1',
+      type: 'zombie',
+      distance: 4,
+      visible: true,
+      state: 'pursuing' as const,
+      targeting: 'human',
+    }],
+  };
+  const completed = await adapter.runAutonomousTurn(observation, {
+    reason: 'threat',
+    fingerprint: 'threat:zombie-1:zombie:pursuing:human',
+  });
+  const autonomousActions = events.filter((event) => event.kind === 'world-action');
+  const autonomousMessages = requests[0]?.messages as Array<{ content?: string }> | undefined;
+  check('completes an autonomous model turn', completed);
+  check('caps an autonomous turn at one validated action', autonomousActions.length === 1);
+  check('uses an explicit non-human autonomous directive', autonomousMessages?.some(
+    (message) => message.content?.includes('[Autonomous world attention]'),
+  ) === true);
+
+  await adapter.sendMessage('Stay close.');
+  const humanMessages = requests[1]?.messages as Array<{ content?: string }> | undefined;
+  check('does not persist the autonomous directive into human conversation', humanMessages?.some(
+    (message) => message.content?.includes('[Autonomous world attention]'),
+  ) === false);
+}
+
 async function configSafetyTest(): Promise<void> {
   console.log('\n[GenericLLM/config] safety test');
   let rejected = false;
@@ -158,6 +226,7 @@ function observationBoundsTest(): void {
 async function main(): Promise<void> {
   await openAICompatibleTest();
   await anthropicTest();
+  await autonomousTurnTest();
   await configSafetyTest();
   observationBoundsTest();
   console.log(`\n${failures === 0 ? 'ALL PASS' : `${failures} FAILURE(S)`}`);

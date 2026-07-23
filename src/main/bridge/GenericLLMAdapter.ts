@@ -12,6 +12,10 @@ import {
   type WorldObservation,
   type WorldObservationProvider,
 } from './worldCognitionContract';
+import type {
+  AutonomousCognitiveTrigger,
+  AutonomousCognitiveTurnRunner,
+} from './AutonomousCognitiveTick';
 import { parseWorldAction, type WorldAction } from '../../shared/worldActions';
 import type { AgentBackendKind, SessionOptions } from '../../shared/types';
 
@@ -31,7 +35,7 @@ export interface GenericLLMAdapterDependencies {
  * Public-edition cognitive bridge. It exposes one capability to the model:
  * validated world actions. It has no CLI, filesystem, shell, or MCP surface.
  */
-export class GenericLLMAdapter extends BaseAgentAdapter {
+export class GenericLLMAdapter extends BaseAgentAdapter implements AutonomousCognitiveTurnRunner {
   readonly kind: AgentBackendKind = 'generic-llm';
 
   private readonly config: GenericLLMProviderConfig;
@@ -103,6 +107,36 @@ export class GenericLLMAdapter extends BaseAgentAdapter {
     if (!trimmed) return;
     this.history.push({ role: 'user', content: trimmed });
     this.trimHistory();
+    const observation = this.observationProvider();
+    await this.performTurn(observation, this.history, true, 4);
+  }
+
+  async runAutonomousTurn(
+    observation: WorldObservation,
+    trigger: AutonomousCognitiveTrigger,
+  ): Promise<boolean> {
+    if (!this.sessionId || this.controller) return false;
+    const directive = [
+      '[Autonomous world attention]',
+      `Reason: ${trigger.reason}.`,
+      'Assess the current observation and choose at most one useful world action.',
+      'Speak only when a concise warning, request, or coordination message helps the human.',
+      'The coded tactical reflex remains active; do not narrate routine movement or combat.',
+    ].join(' ');
+    return this.performTurn(
+      observation,
+      [...this.history, { role: 'user', content: directive }],
+      false,
+      1,
+    );
+  }
+
+  private async performTurn(
+    observation: WorldObservation | null,
+    messages: readonly ConversationMessage[],
+    recordAssistant: boolean,
+    maxActions: number,
+  ): Promise<boolean> {
     this.controller = new AbortController();
     const timeout = setTimeout(
       () => this.controller?.abort(new Error('provider request timed out')),
@@ -111,29 +145,30 @@ export class GenericLLMAdapter extends BaseAgentAdapter {
     this.setStatus('thinking');
 
     try {
-      const observation = this.observationProvider();
       const turn = this.config.protocol === 'anthropic'
-        ? await this.callAnthropic(observation, this.controller.signal)
-        : await this.callOpenAICompatible(observation, this.controller.signal);
+        ? await this.callAnthropic(observation, messages, this.controller.signal)
+        : await this.callOpenAICompatible(observation, messages, this.controller.signal);
 
-      const actions = this.validateActions(turn.actionInputs);
+      const actions = this.validateActions(turn.actionInputs, maxActions);
       if (turn.text) {
         this.setStatus('streaming');
         this.emit({ kind: 'assistant-delta', text: turn.text });
         this.emit({ kind: 'assistant-message', text: turn.text });
-        this.history.push({ role: 'assistant', content: turn.text });
-      } else {
+        if (recordAssistant) this.history.push({ role: 'assistant', content: turn.text });
+      } else if (recordAssistant) {
         this.history.push({ role: 'assistant', content: '[World action requested]' });
       }
       for (const action of actions) this.emit({ kind: 'world-action', action });
-      this.trimHistory();
+      if (recordAssistant) this.trimHistory();
       this.emit({ kind: 'result', text: turn.text, isError: false });
       this.setStatus('ready');
+      return true;
     } catch (error) {
       const message = this.safeError(error);
       this.emit({ kind: 'error', message });
       this.emit({ kind: 'result', text: '', isError: true });
       this.setStatus('error', message);
+      return false;
     } finally {
       clearTimeout(timeout);
       this.controller = null;
@@ -157,13 +192,14 @@ export class GenericLLMAdapter extends BaseAgentAdapter {
 
   private async callOpenAICompatible(
     observation: WorldObservation | null,
+    messages: readonly ConversationMessage[],
     signal: AbortSignal,
   ): Promise<ModelTurn> {
     const body = {
       model: this.activeModel,
       messages: [
         { role: 'system', content: this.systemPrompt(observation) },
-        ...this.history,
+        ...messages,
       ],
       tools: [{
         type: 'function',
@@ -200,12 +236,13 @@ export class GenericLLMAdapter extends BaseAgentAdapter {
 
   private async callAnthropic(
     observation: WorldObservation | null,
+    messages: readonly ConversationMessage[],
     signal: AbortSignal,
   ): Promise<ModelTurn> {
     const body = {
       model: this.activeModel,
       system: this.systemPrompt(observation),
-      messages: this.history,
+      messages,
       tools: [{
         name: WORLD_ACTION_TOOL_NAME,
         description: 'Request one bounded action for your own in-game avatar.',
@@ -267,9 +304,9 @@ export class GenericLLMAdapter extends BaseAgentAdapter {
     return `${COMPANION_SYSTEM_PROMPT}\nCurrent world observation:\n${serializeObservation(observation)}`;
   }
 
-  private validateActions(inputs: unknown[]): WorldAction[] {
+  private validateActions(inputs: unknown[], maxActions: number): WorldAction[] {
     const actions: WorldAction[] = [];
-    for (const input of inputs.slice(0, 4)) {
+    for (const input of inputs.slice(0, maxActions)) {
       const action = parseWorldAction(input);
       if (action) actions.push(action);
       else this.emit({ kind: 'error', message: 'model requested an invalid world action; ignored' });

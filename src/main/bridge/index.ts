@@ -21,6 +21,14 @@ export function createAdapter(kind: CliKind): AgentSessionAdapter {
 
 export type { AgentSessionAdapter } from './AgentSessionAdapter';
 export { GenericLLMAdapter } from './GenericLLMAdapter';
+export { AutonomousCognitiveTick } from './AutonomousCognitiveTick';
+export type {
+  AutonomousCognitiveReason,
+  AutonomousCognitiveTickOptions,
+  AutonomousCognitiveTrigger,
+  AutonomousCognitiveTurnRunner,
+  AutonomousTickResult,
+} from './AutonomousCognitiveTick';
 export type {
   GenericLLMAdapterDependencies,
 } from './GenericLLMAdapter';

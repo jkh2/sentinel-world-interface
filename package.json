@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx scripts/test-adapters.ts",
     "test:generic-llm": "tsx scripts/test-generic-llm.ts",
+    "test:cognitive-tick": "tsx scripts/test-autonomous-cognition.ts",
     "test:world-observation": "tsx scripts/test-world-observation.ts",
     "spike:pty": "node scripts/pty-spike.mjs"
   },
