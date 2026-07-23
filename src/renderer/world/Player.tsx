@@ -1,7 +1,9 @@
-// First-person player: pointer-lock look + WASD movement, with the camera
-// snapped to the terrain surface so you walk over hills (and down into holes
-// you dig). No physics engine — kinematic terrain-follow, which is plenty for
-// a build-focused sandbox and keeps movement rock-solid.
+// First-person player: pointer-lock look + WASD movement. The camera rides the
+// terrain surface as a *floor* — gravity pulls it down onto whatever ground is
+// beneath (recomputed live, so digging changes it), and Space launches a jump
+// when grounded so you can climb out of a pit you dug or hop a small obstacle.
+// No physics engine — kinematic terrain-follow + a single vertical velocity,
+// which is plenty for a build-focused sandbox and keeps movement rock-solid.
 
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -12,12 +14,16 @@ import { navPoint } from './navPoints';
 
 const EYE_HEIGHT = 1.7;
 const SPEED = 7;
+const GRAVITY = 25; // blocks/s^2
+const JUMP_SPEED = 9; // blocks/s — peaks at ~1.6 blocks (vy^2 / 2g), clears a 1-block step
 
 export function Player({ world }: { world: VoxelWorld }): JSX.Element {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const fwd = useRef(new THREE.Vector3());
   const right = useRef(new THREE.Vector3());
+  const vy = useRef(0); // vertical velocity (blocks/s)
+  const grounded = useRef(true);
 
   useEffect(() => {
     const sp = navPoint('spawn_human')!;
@@ -26,7 +32,11 @@ export function Player({ world }: { world: VoxelWorld }): JSX.Element {
       world.surfaceHeight(sp.x, sp.z) + EYE_HEIGHT,
       sp.z + 0.5,
     );
-    const down = (e: KeyboardEvent) => (keys.current[e.code] = true);
+    const down = (e: KeyboardEvent) => {
+      keys.current[e.code] = true;
+      // Space would otherwise scroll/activate the page; the avatar owns it in-world.
+      if (e.code === 'Space' && document.pointerLockElement) e.preventDefault();
+    };
     const up = (e: KeyboardEvent) => (keys.current[e.code] = false);
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
@@ -63,9 +73,26 @@ export function Player({ world }: { world: VoxelWorld }): JSX.Element {
     camera.position.x = Math.max(0.5, Math.min(world.sx - 0.5, camera.position.x));
     camera.position.z = Math.max(0.5, Math.min(world.sz - 0.5, camera.position.z));
 
-    // Smoothly follow the surface (recomputed live, so digging changes it).
-    const targetY = world.surfaceHeight(camera.position.x, camera.position.z) + EYE_HEIGHT;
-    camera.position.y += (targetY - camera.position.y) * Math.min(1, dt * 12);
+    // Vertical: the surface is a floor, not a hard target. Space launches a jump
+    // when grounded; gravity integrates us back down onto the live surface (so a
+    // pit you dug lowers the floor, and you fall in — then jump to climb out).
+    const step = Math.min(dt, 0.05);
+    const floorY = world.surfaceHeight(camera.position.x, camera.position.z) + EYE_HEIGHT;
+    if ((k['Space'] ?? false) && grounded.current) {
+      vy.current = JUMP_SPEED;
+      grounded.current = false;
+    }
+    vy.current -= GRAVITY * step;
+    let y = camera.position.y + vy.current * step;
+    if (y <= floorY) {
+      // Landed on (or stepping up onto) the ground.
+      y = floorY;
+      vy.current = 0;
+      grounded.current = true;
+    } else {
+      grounded.current = false;
+    }
+    camera.position.y = y;
   });
 
   return <PointerLockControls />;
