@@ -2,6 +2,7 @@
 // and my presence. DOM overlays (crosshair, HUD, chat) live outside the Canvas
 // in App — the world client holds no CLI logic.
 
+import { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { VoxelTerrain } from './VoxelTerrain';
 import { Scenery } from './Scenery';
@@ -9,6 +10,7 @@ import { Player } from './Player';
 import { AgentPresence } from './AgentPresence';
 import { DayNight, type DayPhase } from './DayNight';
 import { ZombieManager } from './ZombieManager';
+import { createCombatLink } from './combat';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import type { BlockId } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
@@ -36,6 +38,9 @@ interface Props {
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
+  // Shared combat handle: ZombieManager writes the horde + strikeNearest,
+  // AgentPresence reads it to fight beside the human.
+  const combat = useRef(createCombatLink()).current;
   return (
     <Canvas
       shadows
@@ -60,6 +65,7 @@ export function WorldCanvas(props: Props): JSX.Element {
         speech={props.agentSpeech}
         command={props.agentCommand}
         onWorldEdit={props.onAgentWorldEdit}
+        combat={combat}
       />
       <ZombieManager
         world={props.world}
@@ -70,6 +76,7 @@ export function WorldCanvas(props: Props): JSX.Element {
         onCount={props.onZombieCount}
         onWorldEdit={props.onAgentWorldEdit}
         onPlayerDamage={props.onPlayerDamage}
+        combat={combat}
       />
     </Canvas>
   );

@@ -13,6 +13,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import { AIR, BEDROCK, GRASS, DIRT, STONE, SAND, type BlockId } from './voxel/blocks';
+import type { CombatLink } from './combat';
 
 interface Zombie {
   x: number;
@@ -97,6 +98,7 @@ export function ZombieManager({
   onCount,
   onWorldEdit,
   onPlayerDamage,
+  combat,
 }: {
   world: VoxelWorld;
   isNight: boolean;
@@ -106,6 +108,7 @@ export function ZombieManager({
   onCount: (n: number) => void;
   onWorldEdit: () => void;
   onPlayerDamage: (d: number) => void;
+  combat: CombatLink;
 }): JSX.Element {
   const { camera } = useThree();
   const zombies = useRef<Zombie[]>([]);
@@ -123,6 +126,28 @@ export function ZombieManager({
     zombies.current = [];
   }, [respawnSignal]);
 
+  // Expose a strike to the companion (via the shared combat link). Unlike the
+  // player's spear-gated strike, the AI defender always fights — it's its own
+  // capable partner, not dependent on your inventory.
+  useEffect(() => {
+    combat.strikeNearest = (x: number, z: number, range: number): boolean => {
+      const arr = zombies.current;
+      let best = -1;
+      let bestD = range;
+      for (let i = 0; i < arr.length; i++) {
+        const d = Math.hypot(arr[i].x - x, arr[i].z - z);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      if (best < 0) return false;
+      arr[best].hp -= 1;
+      if (arr[best].hp <= 0) arr.splice(best, 1);
+      return true;
+    };
+  }, [combat]);
+
   const strike = (i: number): void => {
     if (!hasSpearRef.current) return; // need a spear to fight
     const z = zombies.current[i];
@@ -136,6 +161,10 @@ export function ZombieManager({
     const dt = Math.min(dtRaw, 0.05);
     const px = camera.position.x;
     const pz = camera.position.z;
+
+    // Keep the companion's view of the horde pointing at the live array (it gets
+    // reassigned on respawn, so a one-time hand-off would go stale).
+    combat.zombies = zombies.current;
 
     const target = isNight ? 14 : 3;
     const interval = isNight ? 1.4 : 6;
