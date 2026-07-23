@@ -20,4 +20,24 @@ export function createAdapter(kind: CliKind): AgentSessionAdapter {
 }
 
 export type { AgentSessionAdapter } from './AgentSessionAdapter';
+export { GenericLLMAdapter } from './GenericLLMAdapter';
+export type {
+  GenericLLMAdapterDependencies,
+} from './GenericLLMAdapter';
+export type {
+  GenericLLMProtocol,
+  GenericLLMProviderConfig,
+} from './genericLLMConfig';
+export type {
+  ChokepointObservation,
+  InteractableObservation,
+  KnowledgeSource,
+  ParticipantObservation,
+  RelativeVector,
+  RouteObservation,
+  ThreatObservation,
+  WorldObservation,
+  WorldEventObservation,
+  WorldObservationProvider,
+} from './worldCognitionContract';
 export { detectAll } from './capability';

@@ -6,14 +6,14 @@
 import type { AgentOutputEvent } from '../../shared/events';
 import type {
   AgentSessionStatus,
+  AgentBackendKind,
   CapabilityReport,
-  CliKind,
   SessionOptions,
 } from '../../shared/types';
 
 export interface AgentSessionAdapter {
   /** Which backend this adapter drives. */
-  readonly kind: CliKind;
+  readonly kind: AgentBackendKind;
 
   /** Start an interactive session in the given working directory. */
   startSession(options: SessionOptions): Promise<void>;
@@ -45,7 +45,7 @@ export interface AgentSessionAdapter {
  * concrete adapters only implement transport-specific logic.
  */
 export abstract class BaseAgentAdapter implements AgentSessionAdapter {
-  abstract readonly kind: CliKind;
+  abstract readonly kind: AgentBackendKind;
 
   private listeners: Array<(event: AgentOutputEvent) => void> = [];
   protected status: AgentSessionStatus = 'idle';
