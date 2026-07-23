@@ -53,6 +53,9 @@ function wireSession(): SessionManager {
   ipcMain.handle(IpcChannels.sessionStop, () => manager.stop());
   ipcMain.handle(IpcChannels.sessionStatus, () => manager.status());
   ipcMain.handle(IpcChannels.detectClis, () => detectAll());
+  ipcMain.on(IpcChannels.sessionSetObservation, (_e, observation) =>
+    manager.setObservation(observation),
+  );
 
   ipcMain.handle(IpcChannels.pickDirectory, async () => {
     if (!mainWindow) return null;

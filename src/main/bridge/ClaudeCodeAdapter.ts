@@ -8,11 +8,18 @@
 // claude-code 2.1.217.
 
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { app } from 'electron';
 import { BaseAgentAdapter } from './AgentSessionAdapter';
 import { ClaudeStreamParser } from './claudeStreamParser';
 import { detectClaudeCapability } from './capability';
 import { worldProtocolPrompt } from '../../shared/worldActions';
+import { COMPANION_SYSTEM_PROMPT } from './worldCognitionContract';
 import type { CliKind, SessionOptions } from '../../shared/types';
+
+const WORLD_MCP_SERVER_NAME = 'sidlf-world';
 
 export class ClaudeCodeAdapter extends BaseAgentAdapter {
   readonly kind: CliKind = 'claude-code';
@@ -21,6 +28,15 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
   private parser: ClaudeStreamParser | null = null;
   private stdoutBuffer = '';
   private lastSessionId: string | null = null;
+  private worldBridgePort: number | null = null;
+  private mcpConfigDir: string | null = null;
+
+  /** Called by SessionManager once the local world bridge is listening. Gives
+   *  a real live session the same eyes+hands any other tool call gets, via
+   *  world-action MCP tools rather than the fragile text-envelope fallback. */
+  configureWorldBridge(port: number): void {
+    this.worldBridgePort = port;
+  }
 
   async startSession(options: SessionOptions): Promise<void> {
     const capability = await detectClaudeCapability();
@@ -31,6 +47,17 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
     }
     this.capability = capability;
 
+    // Prefer real MCP tools (eyes + hands, same shape as any other tool
+    // call) when the world bridge is up; fall back to the text-envelope
+    // protocol only when no bridge port was configured (e.g. not a game
+    // session at all).
+    const mcpConfigPath = this.worldBridgePort
+      ? await this.writeMcpConfig(this.worldBridgePort)
+      : null;
+    const systemPrompt = mcpConfigPath
+      ? `${COMPANION_SYSTEM_PROMPT}\nCall get_world_observation whenever you need fresh eyes on the world before deciding what to do.`
+      : worldProtocolPrompt();
+
     const args = [
       '-p',
       '--input-format',
@@ -39,10 +66,14 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
       'stream-json',
       '--include-partial-messages',
       '--verbose',
-      // Teach the live session how to move its avatar in the world.
       '--append-system-prompt',
-      worldProtocolPrompt(),
+      systemPrompt,
     ];
+    if (mcpConfigPath) {
+      // Strict: this session only gets the world-action tools, never
+      // whatever unrelated MCP servers a project-level .mcp.json might add.
+      args.push('--mcp-config', mcpConfigPath, '--strict-mcp-config');
+    }
     if (options.model) args.push('--model', options.model);
     if (options.resume) args.push('--resume', options.resume);
     // Permission posture: pass through only what was asked for; never inject a
@@ -86,6 +117,7 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
       this.setStatus('stopped');
       this.emit({ kind: 'exit', code: code ?? 0 });
       this.child = null;
+      void this.cleanupMcpConfig();
     });
   }
 
@@ -140,11 +172,54 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
       this.child.kill();
       this.child = null;
     }
+    await this.cleanupMcpConfig();
     this.setStatus('stopped');
   }
 
   /** Session id of the most recent session, for resume. */
   getLastSessionId(): string | null {
     return this.lastSessionId;
+  }
+
+  /**
+   * Writes a temp --mcp-config JSON pointing at the world-action MCP server,
+   * with the local bridge port passed through its env. Dev-time invocation
+   * only (via tsx, same as the project's existing test scripts) — a
+   * deliberate, named scope boundary; packaging is a later concern.
+   */
+  private async writeMcpConfig(port: number): Promise<string> {
+    const projectRoot = app.getAppPath();
+    const tsxBin = join(
+      projectRoot,
+      'node_modules',
+      '.bin',
+      process.platform === 'win32' ? 'tsx.cmd' : 'tsx',
+    );
+    const serverScript = join(projectRoot, 'scripts', 'world-mcp-server.ts');
+
+    this.mcpConfigDir = await mkdtemp(join(tmpdir(), 'sidlf-mcp-'));
+    const configPath = join(this.mcpConfigDir, 'mcp-config.json');
+    const config = {
+      mcpServers: {
+        [WORLD_MCP_SERVER_NAME]: {
+          command: tsxBin,
+          args: [serverScript],
+          env: { WORLD_BRIDGE_PORT: String(port) },
+        },
+      },
+    };
+    await writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
+    return configPath;
+  }
+
+  private async cleanupMcpConfig(): Promise<void> {
+    const dir = this.mcpConfigDir;
+    this.mcpConfigDir = null;
+    if (!dir) return;
+    try {
+      await rm(dir, { recursive: true, force: true });
+    } catch {
+      /* best-effort cleanup */
+    }
   }
 }

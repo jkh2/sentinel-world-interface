@@ -14,9 +14,11 @@
     "test": "tsx scripts/test-adapters.ts",
     "test:generic-llm": "tsx scripts/test-generic-llm.ts",
     "test:world-observation": "tsx scripts/test-world-observation.ts",
+    "test:world-bridge": "tsx scripts/test-world-bridge.ts",
     "spike:pty": "node scripts/pty-spike.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "node-pty": "^1.0.0",

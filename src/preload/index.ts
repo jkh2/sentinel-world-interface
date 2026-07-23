@@ -6,6 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { IpcChannels } from '../shared/events';
 import type { AgentOutputEvent } from '../shared/events';
 import type { CapabilityReport, CliKind, SessionOptions } from '../shared/types';
+import type { WorldObservation } from '../main/bridge/worldCognitionContract';
 
 const api = {
   startSession: (options: SessionOptions): Promise<{ ok: boolean; error?: string }> =>
@@ -17,6 +18,11 @@ const api = {
   interrupt: (): Promise<void> => ipcRenderer.invoke(IpcChannels.sessionInterrupt),
 
   stopSession: (): Promise<void> => ipcRenderer.invoke(IpcChannels.sessionStop),
+
+  /** Throttled push of the live world state — fire-and-forget by design. */
+  setObservation: (observation: WorldObservation): void => {
+    ipcRenderer.send(IpcChannels.sessionSetObservation, observation);
+  },
 
   detectClis: (): Promise<Record<CliKind, CapabilityReport | null>> =>
     ipcRenderer.invoke(IpcChannels.detectClis),

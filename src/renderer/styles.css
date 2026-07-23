@@ -152,6 +152,10 @@ button.danger { background: #3a2020; border-color: var(--red); }
 .src-error .text { color: var(--red); }
 .caret { color: var(--gold); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+.quick-actions {
+  display: flex; gap: 6px; padding: 8px 10px 0; flex-wrap: wrap;
+}
+.quick-actions button { font-size: 12px; padding: 5px 9px; }
 .composer { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); align-items: flex-end; }
 .composer textarea { flex: 1; resize: none; cursor: text; }
 .cbtns { display: flex; flex-direction: column; gap: 6px; }

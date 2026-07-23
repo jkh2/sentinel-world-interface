@@ -49,7 +49,10 @@ const ARRIVAL_RADIUS = 2.5; // 'at <name>' inside this
 const NEAR_RADIUS = 8; // 'near <name>' inside this (Orion's ~8)
 const ZOMBIE_ATTACK_DIST = 1.5; // matches ZombieManager contact range
 const DEFAULT_HUMAN = 'James';
-const DEFAULT_SELF = 'Claude Sentinel';
+// Deliberately not an identity claim — a name here would assert who's driving
+// the avatar without evidence. Callers should always pass an explicit,
+// honest self.name; this only covers the defensive case where none arrived.
+const DEFAULT_SELF = 'AI companion (unlabeled driver)';
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 

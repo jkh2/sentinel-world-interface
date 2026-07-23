@@ -102,6 +102,9 @@ export const IpcChannels = {
   sessionStop: 'session:stop',
   sessionResize: 'session:resize',
   sessionStatus: 'session:status',
+  /** One-way push, not a request/response call — fired on a throttled cadence
+   *  from the renderer, so it uses send/on rather than invoke/handle. */
+  sessionSetObservation: 'session:set-observation',
   permissionRespond: 'permission:respond',
   detectClis: 'clis:detect',
   pickDirectory: 'dialog:pick-directory',

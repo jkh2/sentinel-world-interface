@@ -2,7 +2,7 @@
 // and my presence. DOM overlays (crosshair, HUD, chat) live outside the Canvas
 // in App — the world client holds no CLI logic.
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { VoxelTerrain } from './VoxelTerrain';
 import { Scenery } from './Scenery';
@@ -11,9 +11,12 @@ import { AgentPresence } from './AgentPresence';
 import { DayNight, type DayPhase } from './DayNight';
 import { ZombieManager } from './ZombieManager';
 import { createCombatLink } from './combat';
+import { createAvatarHandle } from './avatarHandle';
+import { WorldObserver } from './WorldObserver';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import type { BlockId } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
+import type { WorldObservation } from '../../main/bridge/worldCognitionContract';
 
 interface Props {
   world: VoxelWorld;
@@ -25,6 +28,7 @@ interface Props {
   agentStatus: string;
   agentSpeech: string;
   agentCommand: WorldAction | null;
+  agentDriverName: string;
   onAgentWorldEdit: () => void;
   onDayTick: (timeOfDay: number, isNight: boolean, phase: DayPhase) => void;
   isNight: boolean;
@@ -35,12 +39,16 @@ interface Props {
   onPlayerDamage: (d: number) => void;
   paused: boolean;
   dayResetSignal: number;
+  onObservation: (observation: WorldObservation) => void;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
   // Shared combat handle: ZombieManager writes the horde + strikeNearest,
   // AgentPresence reads it to fight beside the human.
   const combat = useRef(createCombatLink()).current;
+  // Shared avatar-pose handle: AgentPresence writes it, WorldObserver reads it.
+  const avatar = useRef(createAvatarHandle()).current;
+  const [phase, setPhase] = useState<DayPhase>('Day');
   return (
     <Canvas
       shadows
@@ -48,7 +56,13 @@ export function WorldCanvas(props: Props): JSX.Element {
       gl={{ antialias: true }}
     >
       <fog attach="fog" args={['#e2d3b2', 45, 180]} />
-      <DayNight onTick={props.onDayTick} resetSignal={props.dayResetSignal} />
+      <DayNight
+        onTick={(t, night, ph) => {
+          setPhase(ph);
+          props.onDayTick(t, night, ph);
+        }}
+        resetSignal={props.dayResetSignal}
+      />
       <VoxelTerrain
         world={props.world}
         version={props.version}
@@ -66,6 +80,8 @@ export function WorldCanvas(props: Props): JSX.Element {
         command={props.agentCommand}
         onWorldEdit={props.onAgentWorldEdit}
         combat={combat}
+        avatar={avatar}
+        driverName={props.agentDriverName}
       />
       <ZombieManager
         world={props.world}
@@ -77,6 +93,13 @@ export function WorldCanvas(props: Props): JSX.Element {
         onWorldEdit={props.onAgentWorldEdit}
         onPlayerDamage={props.onPlayerDamage}
         combat={combat}
+      />
+      <WorldObserver
+        avatar={avatar}
+        combat={combat}
+        phase={phase}
+        selfName={props.agentDriverName}
+        onObservation={props.onObservation}
       />
     </Canvas>
   );

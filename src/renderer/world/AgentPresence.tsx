@@ -12,6 +12,7 @@ import { navPoint } from './navPoints';
 import { AIR, blockIdFromName } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
 import type { CombatLink, ZombieHandle } from './combat';
+import type { AvatarHandle } from './avatarHandle';
 
 interface Props {
   world: VoxelWorld;
@@ -20,6 +21,14 @@ interface Props {
   command: WorldAction | null;
   onWorldEdit: () => void;
   combat: CombatLink;
+  avatar: AvatarHandle;
+  /**
+   * Who is actually driving this avatar right now — honest labeling, not a
+   * fixed identity claim. A puppet is only truthfully named for who is
+   * pulling the strings this moment (a real live Claude session vs. no
+   * driver at all), never for what body it happens to wear.
+   */
+  driverName: string;
 }
 
 const WALK_SPEED = 3.6;
@@ -31,7 +40,7 @@ const THREAT_RADIUS = 11;
 const AGENT_ATTACK_RANGE = 1.9;
 const AGENT_ATTACK_CD = 0.55; // seconds between strikes (2-hp zombie ≈ 1.1s)
 
-export function AgentPresence({ world, status, speech, command, onWorldEdit, combat }: Props): JSX.Element {
+export function AgentPresence({ world, status, speech, command, onWorldEdit, combat, avatar, driverName }: Props): JSX.Element {
   const { camera } = useThree();
   const group = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
@@ -172,6 +181,11 @@ export function AgentPresence({ world, status, speech, command, onWorldEdit, com
     while (dy < -Math.PI) dy += Math.PI * 2;
     g.rotation.y += dy * Math.min(1, dt * 8);
 
+    // Publish my own live pose for the observation builder to read.
+    avatar.x = g.position.x;
+    avatar.z = g.position.z;
+    avatar.facingRad = g.rotation.y;
+
     // Posture.
     if (body.current) {
       const targetY = sitting.current ? -0.35 : 0;
@@ -228,7 +242,7 @@ export function AgentPresence({ world, status, speech, command, onWorldEdit, com
 
       <Html position={[0, 2.25, 0]} center distanceFactor={12} occlude>
         <div className="agent-label">
-          <div className="agent-name">ב Claude Sentinel</div>
+          <div className="agent-name">{driverName}</div>
           <div className="agent-status">{status}</div>
           {speech && <div className="agent-speech">{speech}</div>}
         </div>

@@ -5,7 +5,17 @@ import { PLACEABLE, GRASS, STONE, blockName, type BlockId } from './world/voxel/
 import type { AgentOutputEvent, MessageSource } from '../shared/events';
 import type { AgentSessionStatus, CapabilityReport, CliKind } from '../shared/types';
 import type { WorldAction } from '../shared/worldActions';
+import type { WorldObservation } from '../main/bridge/worldCognitionContract';
 import type { DayPhase } from './world/DayNight';
+
+/** Honest avatar labeling: only claim an identity when a real session is
+ *  actually driving it through validated tools — never as a fixed default. */
+function driverNameFor(cli: CliKind, sessionUp: boolean): string {
+  if (!sessionUp) return 'AI companion (idle)';
+  if (cli === 'claude-code') return 'ב Claude Sentinel';
+  if (cli === 'codex') return 'AI companion (Codex)';
+  return 'AI companion (mock)';
+}
 
 interface Message {
   id: string;
@@ -21,6 +31,16 @@ interface PermissionReq {
 
 let msgSeq = 0;
 const nextId = () => `m${++msgSeq}`;
+
+// Quick actions: canned chat messages, not a client-side world-action
+// shortcut — the live companion still decides what to actually do with them
+// through its own tool calls. Each has a hotkey that fires with zero unlock:
+// keydown reaches window listeners regardless of pointer-lock state, so these
+// work mid-fight without ever leaving the game.
+const QUICK_ACTIONS: { code: string; label: string; text: string }[] = [
+  { code: 'KeyG', label: 'Come here (G)', text: 'Come here — I need you.' },
+  { code: 'KeyH', label: 'Help! (H)', text: "Help! There's danger on me right now." },
+];
 
 export function App(): JSX.Element {
   // --- world ---
@@ -67,6 +87,11 @@ export function App(): JSX.Element {
   const streamingId = useRef<string | null>(null);
   const transcriptEnd = useRef<HTMLDivElement | null>(null);
   const pendingSend = useRef<string | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
+
+  function resumePlay(): void {
+    document.querySelector('canvas')?.requestPointerLock();
+  }
 
   function onDragStart(e: React.PointerEvent): void {
     dragRef.current = { dx: e.clientX - chatPos.x, dy: e.clientY - chatPos.y };
@@ -285,21 +310,58 @@ export function App(): JSX.Element {
     });
     if (!res.ok) addMessage('Error', res.error ?? 'failed to start');
   }
-  async function onSend(): Promise<void> {
-    const text = input.trim();
-    if (!text) return;
-    setInput('');
+  async function sendText(text: string): Promise<void> {
+    const trimmed = text.trim();
+    if (!trimmed) return;
     if (!sessionUp) {
       // No session yet — auto-start the selected backend; the message flushes
       // on session-started. (Mock is the default and needs no project dir.)
-      pendingSend.current = text;
+      pendingSend.current = trimmed;
       await onStart();
       return;
     }
-    addMessage('Human', text);
+    addMessage('Human', trimmed);
     setSpeech('');
-    await window.sidlf.sendMessage(text);
+    await window.sidlf.sendMessage(trimmed);
   }
+
+  async function onSend(): Promise<void> {
+    const text = input;
+    setInput('');
+    await sendText(text);
+  }
+
+  /** Fired mid-gameplay, still pointer-locked — no unlock, no focus change. */
+  async function sendQuickAction(text: string): Promise<void> {
+    await sendText(text);
+  }
+
+  // Chat hotkeys: T opens the composer and takes focus (exits pointer lock,
+  // since typing needs a real cursor); Escape-in-composer returns to play.
+  // G/H are canned quick actions that fire with zero unlock at all — the
+  // whole point being you never have to stop fighting to use them.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+      if (typing) return;
+      if (e.code === 'KeyT') {
+        e.preventDefault();
+        setChatOpen(true);
+        if (document.pointerLockElement) document.exitPointerLock();
+        requestAnimationFrame(() => composerRef.current?.focus());
+        return;
+      }
+      const quick = QUICK_ACTIONS.find((q) => q.code === e.code);
+      if (quick) {
+        e.preventDefault();
+        void sendQuickAction(quick.text);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionUp]);
   async function onPickDir(): Promise<void> {
     const dir = await window.sidlf.pickDirectory();
     if (dir) setProjectDir(dir);
@@ -322,7 +384,9 @@ export function App(): JSX.Element {
         agentStatus={bubbleStatus}
         agentSpeech={locked ? speech : ''}
         agentCommand={agentCommand}
+        agentDriverName={driverNameFor(cli, sessionUp)}
         onAgentWorldEdit={() => setVersion((v) => v + 1)}
+        onObservation={(observation: WorldObservation) => window.sidlf.setObservation(observation)}
         onDayTick={onDayTick}
         isNight={isNight}
         onZombieCount={setZombieCount}
@@ -391,8 +455,8 @@ export function App(): JSX.Element {
       {/* controls hint */}
       <div className="hint">
         {locked
-          ? 'WASD move · L-click dig / chop tree / strike zombie · R-click place · 1–4 block · C spear · F fruit · N/M night/day · Esc chat'
-          : 'Click the valley to enter · chop trees, mine stone, craft a spear, survive the night'}
+          ? 'WASD move · L-click dig / chop tree / strike zombie · R-click place · 1–4 block · C spear · F fruit · N/M night/day · T talk · G come here · H help! · Esc menu'
+          : 'Click the valley to enter · chop trees, mine stone, craft a spear, survive the night · T to talk, Esc to return to play'}
       </div>
 
       {/* toggle — always available */}
@@ -461,21 +525,38 @@ export function App(): JSX.Element {
             <div ref={transcriptEnd} />
           </div>
 
+          <div className="quick-actions">
+            {QUICK_ACTIONS.map((q) => (
+              <button
+                key={q.code}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => sendQuickAction(q.text)}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+
           <div className="composer">
             <textarea
+              ref={composerRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  onSend();
+                  onSend().then(resumePlay);
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  (e.target as HTMLTextAreaElement).blur();
+                  resumePlay();
                 }
               }}
-              placeholder={sessionUp ? 'Type to your partner…' : 'Type to your partner… (starts a session automatically)'}
+              placeholder={sessionUp ? 'Type to your partner… (Esc to return to play)' : 'Type to your partner… (starts a session automatically)'}
               rows={2}
             />
             <div className="cbtns">
-              <button className="primary" onClick={onSend}>Send</button>
+              <button className="primary" onClick={() => onSend().then(resumePlay)}>Send</button>
               <button onClick={() => window.sidlf.interrupt()} disabled={!sessionUp}>Stop</button>
             </div>
           </div>

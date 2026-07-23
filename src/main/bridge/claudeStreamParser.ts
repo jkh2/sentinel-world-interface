@@ -38,6 +38,10 @@ export function toolToActivity(tool: string): WorkActivity {
       return 'Reading files';
     case 'Task':
       return 'Thinking';
+    case 'get_world_observation':
+      return 'Reading files';
+    case 'world_action':
+      return 'Running command';
     default:
       return 'Running command';
   }
