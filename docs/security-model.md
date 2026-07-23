@@ -104,8 +104,10 @@ runs.
 ## 5. Auditability
 
 - The **raw** CLI transcript is preserved separately from the cleaned
-  conversation transcript (terminal drawer), so what actually ran is always
-  inspectable.
+  conversation transcript, so what actually ran can always be inspected. *(The
+  in-UI terminal drawer that surfaced it was dropped in the voxel-world rewrite
+  and is planned to return — see the status list above; the raw event stream
+  still flows to the app today.)*
 - World actions are (Phase 4) logged separately from shell/file actions.
 - An emergency **stop** control tears the session down immediately;
   **interrupt** halts the current turn.
@@ -117,5 +119,7 @@ runs.
 The most dangerous failure mode for a "pretty" agent front-end is making
 destructive actions feel frictionless or invisible. This design treats that as
 the primary thing to prevent: real actions stay visible, permissions stay with
-the CLI, the renderer stays sandboxed, and the avatar can never touch the
-computer. Beauty is allowed; hiding is not.
+the CLI's own prompting, the renderer stays **isolated** (context-isolated,
+`nodeIntegration` off, no direct Node access — the full Electron sandbox is a
+tracked hardening item, see the status list above, not yet enabled), and the
+avatar can never touch the computer. Beauty is allowed; hiding is not.
