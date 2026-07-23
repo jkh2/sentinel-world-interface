@@ -81,6 +81,18 @@ geography** — the thing James loved playing side-by-side with his son.
   meshing. Demoted from "flagship" — a bounded-but-unknown valley delivers the
   shared-discovery feeling first; infinite is a later *scaling* concern.
 - **Bigger footprint**: belongs with chunking (a bigger single mesh is throwaway).
+- **Vehicles (2–4 passengers)** — horse/motorcycle, car, hot air balloon, each a
+  different speed (James's idea). Primary *purpose*, not just speed: **extract an
+  injured player back to the revive point** — a faster, higher-stakes alternative
+  to carrying them out on foot. Refinements:
+  - *Horse first* — a single-rider mount is our existing movement + a speed
+    multiplier + mount/dismount state (reuses the jump-gravity work). The 4-seat
+    car (multi-occupant, terrain handling) is the bigger lift; prove the mount loop cheaply first.
+  - *Found, not only crafted* — an abandoned truck in a ruined town you repair, a
+    horse you tame — so vehicles live inside the functional-loot exploration economy.
+  - *Balloon must not defeat fog-of-war* — aerial view reveals **terrain shape**
+    (canyon there, structure in the trees) but **never** POI contents or threats;
+    you still enter the unknown on foot. A planning tool, not a map-reveal cheat.
 - **Separate participant homes** linked by visits, gifts, roads, tunnels; opt-in
   raid protection so a partner's absence never means abandonment. (Orion's vision brief.)
 - **Voice** (push-to-talk / TTS).
