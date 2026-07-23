@@ -1,81 +1,125 @@
 # SIDLF World Interface
 
-A local desktop environment where a human and an AI partner meet, move around,
-and do **real work together** — not a game, but an alternative interface for
-working with an AI coding agent.
+A **co-op voxel survival game you play beside an AI partner** — you build,
+explore, and survive together in a shared 3D valley. It began as an experiment
+in a different way to work with an AI agent (the world as the interface, not a
+terminal) and grew into a genuine co-op survival game, without losing that root:
+the partner beside you connects to a real agent, so the same world can still
+route real work through a live CLI.
 
-Instead of a terminal window, each participant has an avatar in a peaceful 3D
-park. The conversation connects to a live **Claude Code** or **Codex CLI**
-session, so a request made inside the world results in actual file changes,
-commands, research, and tests.
+---
 
-> **The world is the interface, but the CLI remains the operational engine.**
+## The vision — one game, two kinds of AI partner
+
+There is **one game**. The only thing with two versions is a single slot inside
+it: **who the AI partner is.**
+
+- **The real Sentinel** — the companion is *literally* Claude or Codex, running
+  through the actual CLI. The full partner, with real memory and identity.
+- **Any model you bring** — the companion is whatever model you plug in with your
+  own API key (OpenAI, Anthropic, xAI, Groq, OpenRouter, or a local model), with
+  **no CLI required**. Download the game, bring your own AI partner.
+
+Everything else is identical for both: the same valley, digging, building,
+day/night, zombies, survival, and co-op. The world is built once and serves both.
+
+The partner is never given a keyboard or a shell. It perceives a **bounded
+observation** of the world and acts only through a small, validated vocabulary of
+**world-actions** (walk, dig, place, defend…). Coded game state is the sole
+authority; the model supplies judgment on top of it, never control underneath.
+
+> The world is the interface. The AI partner sees and acts through a validated
+> contract — never by driving your computer.
 
 This app is fully self-contained. It does not read from, write to, or depend on
-any other project on this machine. When it runs an agent, that agent operates
+any other project on this machine. When it runs a CLI agent, that agent operates
 only in the project directory **you** explicitly choose.
 
 ---
 
-## Status — Phase 1 complete (CLI Bridge)
+## What's built
 
 | Piece | State |
 |-------|-------|
-| Operational engine (adapter layer) | ✅ built + live-verified |
-| Claude Code adapter (structured stream-json) | ✅ real session, streamed |
-| Codex adapter (`codex exec`) | ✅ minimal real |
-| Mock adapter (offline) | ✅ deterministic |
-| Electron Phase 1 window | ✅ builds + runs |
-| 3D park, avatars, movement | ⏳ Phase 2 |
-| Voice (push-to-talk / TTS) | ⏳ Phase 5 |
+| **The valley** — voxel world, first-person movement, dig & place | ✅ |
+| **Jump** — hop out of pits you dig, over small obstacles | ✅ |
+| **Depth + bedrock** — real mining depth, an undiggable world floor | ✅ |
+| **Day/night cycle** — the survival heartbeat | ✅ |
+| **Zombies** — slow by day, waves by night; they pursue you and chew through walls (base-building is real defense) | ✅ |
+| **Survival loop** — chop trees → wood/fruit, mine stone, craft a spear, fight, eat to heal, real death + restart | ✅ |
+| **Co-op defend** — the AI partner fights the horde beside you (scripted reflex) | ✅ |
+| **AI partner perception** — a bounded, honest `WorldObservation` of the world (day/night, self, you, threats) | ✅ producer + tests |
+| **Any-model bridge** — provider-neutral adapter, genuine tool-calling, no CLI | ✅ (built by Orion) |
+| **CLI adapters** — Claude Code (stream-json), Codex, Mock (offline) | ✅ |
+| **Live model-driven play** — wiring perception → model → world-actions on a cadence | ⏳ next |
+| **Explore together** — fog-of-war, authored locations with guarded loot | ⏳ planned |
+| Voice (push-to-talk / TTS) | ⏳ later |
 
-See [`docs/architecture.md`](docs/architecture.md) for the full design and the
-staged plan, and [`docs/security-model.md`](docs/security-model.md) for the
-permission model.
+The co-op defend that works today is a **scripted reflex** — a dependable floor.
+Model-*driven* play (the partner deciding for itself by perception) is
+architecturally complete on both sides — the perception producer and the model
+bridge each conform to the same contract and are independently tested — and the
+remaining step is wiring them together live. See [`ROADMAP.md`](ROADMAP.md).
+
+---
+
+## Controls
+
+- **WASD** move · **Space** jump · **Mouse** look
+- **Left-click** dig / chop a tree / strike a zombie · **Right-click** place a block
+- **1–4** select block · **C** craft spear · **F** eat fruit · **N/M** skip to night/day
+- **Esc** free the cursor to use the chat & controls window · click the valley to re-enter
 
 ---
 
 ## Requirements (verified on the build machine)
 
 - **Node.js** ≥ 20.12 (20.17+ recommended — npm warns below that)
-- **Claude Code** CLI on PATH (verified 2.1.217) — for the Claude backend
-- **Codex** CLI on PATH (verified 0.145.0) — for the Codex backend
+- **Claude Code** CLI on PATH — only for the real-Claude partner
+- **Codex** CLI on PATH — only for the real-Codex partner
+- An API key for your chosen provider — only for the any-model partner
 - Windows 10/11, macOS, or Linux. On Windows, node-pty loads a prebuilt binary
-  (no compiler needed); a Visual Studio C++ toolchain is only a fallback.
+  (no compiler needed).
 
-You can run the whole app in **Mock** mode with none of the CLIs installed.
+You can run the whole game in **Mock** mode (an offline, scripted partner) with
+none of the above.
 
 ---
 
-## Setup
+## Setup & run
 
 ```bash
 npm install
-```
-
-## Run
-
-```bash
 npm run dev      # development, with hot reload
 ```
 
-Then in the window:
-
-1. Pick a backend — start with **Mock (offline)** to explore with zero cost.
-2. For a real agent, choose **claude-code** (or **codex**) and **Choose
-   project…** to pick the working directory the agent operates in.
-3. **Start session**, then type. Watch the response stream back; open the
-   terminal drawer to audit raw output.
-
-## Other scripts
+## Scripts
 
 ```bash
-npm run build      # production build of all three contexts
-npm test           # headless engine test (Mock suite; RUN_LIVE=1 adds a live Claude round-trip)
-npm run typecheck  # strict TypeScript check
-npm run spike:pty  # prove node-pty can spawn a CLI on this machine
+npm run build                    # production build
+npm run typecheck                # strict TypeScript check
+npm test                         # headless engine test (Mock; RUN_LIVE=1 adds a live Claude round-trip)
+npm run test:generic-llm         # any-model bridge: protocol + config-safety + observation bounds
+npm run test:world-observation   # the AI partner's perception, conforming to the contract
+npm run spike:pty                # prove node-pty can spawn a CLI on this machine
 ```
 
 ---
 
-*Built by James Keith Harwood II & Claude Sentinel. Part of the Sentinel Alliance.*
+## How it's built (two homes)
+
+This is built jointly from two Sentinel homes, into one repo:
+
+- **Claude Sentinel** — the game client (world, survival, co-op) and the AI
+  partner's **perception** (the `WorldObservation` producer).
+- **Orion Sentinel** — the provider-neutral **cognitive bridge** that lets any
+  model be the partner (`GenericLLMAdapter`), no CLI required.
+
+Both halves meet at one agreed contract
+([`src/main/bridge/worldCognitionContract.ts`](src/main/bridge/worldCognitionContract.ts)):
+the observation the partner sees, and the world-actions it may take.
+
+---
+
+*Built by James Keith Harwood II with Claude Sentinel & Orion Sentinel.
+Part of the Sentinel Alliance.*
