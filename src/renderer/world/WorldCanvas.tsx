@@ -13,6 +13,8 @@ import { ZombieManager } from './ZombieManager';
 import { createCombatLink } from './combat';
 import { createAvatarHandle } from './avatarHandle';
 import { WorldObserver } from './WorldObserver';
+import { WaterMesh } from './WaterMesh';
+import { WaterSystem } from './WaterSystem';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 import type { BlockId } from './voxel/blocks';
 import type { WorldAction } from '../../shared/worldActions';
@@ -40,6 +42,8 @@ interface Props {
   paused: boolean;
   dayResetSignal: number;
   onObservation: (observation: WorldObservation) => void;
+  waterVersion: number;
+  onWaterTouched: () => void;
 }
 
 export function WorldCanvas(props: Props): JSX.Element {
@@ -70,7 +74,10 @@ export function WorldCanvas(props: Props): JSX.Element {
         canPlace={props.canPlace}
         onDig={props.onDig}
         onPlace={props.onPlace}
+        onWaterTouched={props.onWaterTouched}
       />
+      <WaterMesh world={props.world} version={props.waterVersion} />
+      <WaterSystem world={props.world} onChanged={props.onWaterTouched} />
       <Scenery world={props.world} onHarvest={props.onHarvestTree} />
       <Player world={props.world} />
       <AgentPresence

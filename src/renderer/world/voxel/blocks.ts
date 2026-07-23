@@ -27,10 +27,10 @@ export const BLOCKS: Record<BlockId, BlockDef> = {
   [BEDROCK]: { id: BEDROCK, name: 'Bedrock', color: [0.16, 0.15, 0.18] }, // near-black, undiggable floor
 };
 
-/** Blocks the human can select to place, in HUD order. */
-// WATER is defined and ready but kept out of the HUD until the flow simulation
-// lands as its own feature (parked deliberately, not half-wired).
-export const PLACEABLE: BlockId[] = [GRASS, DIRT, STONE, SAND];
+/** Blocks the human can select to place, in HUD order. Placing WATER creates
+ *  a permanent source (VoxelTerrain.tsx special-cases it) rather than a
+ *  plain static block. */
+export const PLACEABLE: BlockId[] = [GRASS, DIRT, STONE, SAND, WATER];
 
 export function blockName(id: BlockId): string {
   return BLOCKS[id]?.name ?? 'Air';

@@ -15,6 +15,7 @@
     "test:generic-llm": "tsx scripts/test-generic-llm.ts",
     "test:world-observation": "tsx scripts/test-world-observation.ts",
     "test:world-bridge": "tsx scripts/test-world-bridge.ts",
+    "test:water": "tsx scripts/test-water.ts",
     "spike:pty": "node scripts/pty-spike.mjs"
   },
   "dependencies": {

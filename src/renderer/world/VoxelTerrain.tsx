@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildGeometry } from './voxel/mesher';
-import { AIR, type BlockId } from './voxel/blocks';
+import { AIR, WATER, type BlockId } from './voxel/blocks';
 import type { VoxelWorld } from './voxel/VoxelWorld';
 
 interface Props {
@@ -16,6 +16,9 @@ interface Props {
   canPlace: boolean;
   onDig: (id: BlockId) => void;
   onPlace: (id: BlockId) => void;
+  /** A dig/place that touched water — nudge the water system to tick right
+   *  away instead of waiting out its own interval, for instant feedback. */
+  onWaterTouched: () => void;
 }
 
 export function VoxelTerrain({
@@ -25,6 +28,7 @@ export function VoxelTerrain({
   canPlace,
   onDig,
   onPlace,
+  onWaterTouched,
 }: Props): JSX.Element {
   const geo = useMemo(() => buildGeometry(world), [world, version]);
   useEffect(() => () => geo.dispose(), [geo]);
@@ -43,19 +47,30 @@ export function VoxelTerrain({
       const y = Math.floor(p.y - n.y * 0.5);
       const z = Math.floor(p.z - n.z * 0.5);
       const id = world.get(x, y, z);
-      // dig() refuses AIR and BEDROCK; only report a real harvest.
+      // dig() refuses AIR/BEDROCK and flowing (non-source) water; a source
+      // can be unplugged but yields nothing to harvest.
       if (world.dig(x, y, z)) {
-        onDig(id);
+        if (id !== WATER) onDig(id);
+        onWaterTouched();
       }
     } else if (e.nativeEvent.button === 2) {
-      // Place into the air cell just outside the hit face.
-      if (!canPlace) return;
+      // Place into the air cell just outside the hit face. Water is never
+      // harvested into inventory (a source yields nothing on dig), so it's
+      // exempt from the inventory-count gate — placing it is a free action,
+      // not spending a harvested resource.
+      if (!canPlace && selectedBlock !== WATER) return;
       const x = Math.floor(p.x + n.x * 0.5);
       const y = Math.floor(p.y + n.y * 0.5);
       const z = Math.floor(p.z + n.z * 0.5);
-      if (world.get(x, y, z) === AIR && world.inBounds(x, y, z)) {
+      if (selectedBlock === WATER) {
+        if (world.placeSource(x, y, z)) {
+          onPlace(selectedBlock);
+          onWaterTouched();
+        }
+      } else if (world.get(x, y, z) === AIR && world.inBounds(x, y, z)) {
         world.set(x, y, z, selectedBlock);
         onPlace(selectedBlock);
+        onWaterTouched();
       }
     }
   };

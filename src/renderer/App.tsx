@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { WorldCanvas } from './world/WorldCanvas';
 import { VoxelWorld } from './world/voxel/VoxelWorld';
-import { PLACEABLE, GRASS, STONE, blockName, type BlockId } from './world/voxel/blocks';
+import { PLACEABLE, GRASS, STONE, WATER, blockName, type BlockId } from './world/voxel/blocks';
 import type { AgentOutputEvent, MessageSource } from '../shared/events';
 import type { AgentSessionStatus, CapabilityReport, CliKind } from '../shared/types';
 import type { WorldAction } from '../shared/worldActions';
@@ -46,6 +46,7 @@ export function App(): JSX.Element {
   // --- world ---
   const [world] = useState(() => new VoxelWorld());
   const [version, setVersion] = useState(0);
+  const [waterVersion, setWaterVersion] = useState(0);
   const [inventory, setInventory] = useState<Record<number, number>>({});
   const [selected, setSelected] = useState<BlockId>(GRASS);
   const [locked, setLocked] = useState(false);
@@ -387,6 +388,8 @@ export function App(): JSX.Element {
         agentDriverName={driverNameFor(cli, sessionUp)}
         onAgentWorldEdit={() => setVersion((v) => v + 1)}
         onObservation={(observation: WorldObservation) => window.sidlf.setObservation(observation)}
+        waterVersion={waterVersion}
+        onWaterTouched={() => setWaterVersion((v) => v + 1)}
         onDayTick={onDayTick}
         isNight={isNight}
         onZombieCount={setZombieCount}
@@ -446,7 +449,7 @@ export function App(): JSX.Element {
           >
             <span className={`swatch b${id}`} />
             <span className="inv-name">{blockName(id)}</span>
-            <span className="inv-count">{inventory[id] ?? 0}</span>
+            <span className="inv-count">{id === WATER ? '∞' : inventory[id] ?? 0}</span>
             <span className="inv-key">{i + 1}</span>
           </button>
         ))}
